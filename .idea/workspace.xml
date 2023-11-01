@@ -4,18 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="59663720-f0ed-437f-8eba-45ebb01e6bc8" name="Changes" comment="Start">
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/arena/Arena.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/config/ConfigManager.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/plugin.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="59663720-f0ed-437f-8eba-45ebb01e6bc8" name="Changes" comment="V0.0.1.2">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/Main.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/arena/ArenaManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/arena/ArenaManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/arena/Arenas.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/arena/Cuboid.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/commandLocationWand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/commandLocationWand.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/arena/Arena.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/arena/Arena.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -78,12 +69,37 @@
       <option name="project" value="LOCAL" />
       <updated>1698690029528</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="V0.0.1.2">
+      <option name="closed" value="true" />
+      <created>1698872472829</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1698872472829</updated>
+    </task>
+    <task id="LOCAL-00003" summary="V0.0.1.2">
+      <option name="closed" value="true" />
+      <created>1698872506827</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1698872506827</updated>
+    </task>
+    <task id="LOCAL-00004" summary="V0.0.1.2">
+      <option name="closed" value="true" />
+      <created>1698872527193</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1698872527193</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="Start" />
-    <option name="LAST_COMMIT_MESSAGE" value="Start" />
+    <MESSAGE value="V0.0.1.2" />
+    <option name="LAST_COMMIT_MESSAGE" value="V0.0.1.2" />
   </component>
 </project>

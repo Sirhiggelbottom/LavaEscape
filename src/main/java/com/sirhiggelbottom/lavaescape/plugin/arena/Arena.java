@@ -12,6 +12,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.inventory.PlayerInventory;
 
 import java.util.Objects;
 
@@ -33,7 +34,7 @@ public class Arena implements Listener {
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getPlayer() == player) {
             Action action = event.getAction();
-            ItemStack handItem = player.getInventory().getItemInMainHand();
+            ItemStack handItem = player.getInventory().getItemInHand();
 
             // Check if the player is holding the custom location wand stick
             if (handItem.getType() == Material.STICK && handItem.hasItemMeta() && Objects.requireNonNull(handItem.getItemMeta()).getDisplayName().equals("Location Wand")) {
