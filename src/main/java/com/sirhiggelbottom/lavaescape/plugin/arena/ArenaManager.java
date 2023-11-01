@@ -1,21 +1,22 @@
 package com.sirhiggelbottom.lavaescape.plugin.arena;
 
+
 import org.bukkit.Location;
 
-import java.util.HashMap;
-import java.util.Map;
+public class ArenaManager {
 
-public class AreaManager {
-    private Map<String, Cuboid> areas = new HashMap<>();
+    private Location pos1;
+    private Location pos2;
 
-    public void addArea(String key, Location corner1, Location corner2) {
-        Cuboid cuboid = new Cuboid(corner1, corner2);
-        areas.put(key, cuboid);
+    public ArenaManager(Location point1, Location point2) {
+        this.pos1 = null;
+        this.pos2 = null;
     }
 
-    public Cuboid getArea(String key) {
-        return areas.get(key);
+
+    public void setPos2(Location pos2) {
+        this.pos2 = pos2;
     }
 
-    // You can add methods for modifying and managing areas as needed
 }
+
