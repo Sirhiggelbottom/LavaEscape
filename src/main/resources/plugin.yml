@@ -1,0 +1,13 @@
+main: com.sirhiggelbottom.lavaescape.plugin.Main
+version: '${project.version}'
+name: LavaEscape
+author: Sirhiggelbottom
+website: https://github.com/Sirhiggelbottom
+
+commands:
+  Lwand:
+
+
+permissions:
+  lavaescape.admin:
+    default: op

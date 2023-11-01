@@ -1,22 +1,38 @@
 package com.sirhiggelbottom.lavaescape.plugin;
 
-import com.sirhiggelbottom.lavaescape.plugin.arena.ArenaManager;
-import org.bukkit.Location;
+import com.sirhiggelbottom.lavaescape.plugin.arena.Arena;
+import com.sirhiggelbottom.lavaescape.plugin.commands.commandLocationWand;
+import com.sirhiggelbottom.lavaescape.plugin.config.ConfigManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.HashMap;
+import java.util.Objects;
 
 public class Main extends JavaPlugin {
-    private HashMap <String, ArenaManager> arenas = new HashMap<>();
+    private final ConfigManager configManager;
+    private final String arenaName;
 
-    public HashMap<String, ArenaManager> getArenas(){
-        return arenas;
-    }
-    public Location setPos1(Location location) {
-        return location;
+    public Main(ConfigManager configManager, String arenaName) {
+        this.configManager = configManager;
+        this.arenaName = arenaName;
     }
 
-    public Location setPos2(Location location) {
-        return location;
+    @Override
+    public void onEnable() {
+        // Initialize the ConfigManager
+        ConfigManager configManager = new ConfigManager(this);
+
+        // Save the default config.yml if it doesn't exist
+        configManager.saveDefaultConfig();
+
+        // Register listeners
+        getServer().getPluginManager().registerEvents(new Arena(this, null, arenaName), this);
+
+        // Register commands
+        Objects.requireNonNull(getCommand("Lwand")).setExecutor(new commandLocationWand());
+    }
+
+    @Override
+    public void onDisable() {
+        configManager.saveConfig();
     }
 }

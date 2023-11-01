@@ -1,3 +1,4 @@
+
 package com.sirhiggelbottom.lavaescape.plugin.commands;
 
 import org.bukkit.Material;
@@ -6,27 +7,39 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+
+import java.util.Collections;
 
 public class commandLocationWand implements CommandExecutor {
-    public String arena;
 
-    public commandLocationWand(String arena) {
-        this.arena = arena;
+    public commandLocationWand() {
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (sender instanceof Player player){
-            if (args[0].equalsIgnoreCase("setarena")){
-                String arena = args[1];
-
-                ItemStack stick = new ItemStack(Material.STICK);
-                player.getInventory().addItem(stick);
-                player.sendMessage("Use this to set the corners of the arena");
-            } else {
-                sender.sendMessage("You're not a player");
-            }
+    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only players can use this command.");
+            return true;
         }
+        Player player = (Player) sender;
+
+        // Create a custom item (location wand stick)
+        ItemStack locationWand = new ItemStack(Material.STICK, 1);
+        ItemMeta meta = locationWand.getItemMeta();
+
+        // Set a unique name and lore to distinguish it from regular sticks
+        assert meta != null;
+        meta.setDisplayName("Location Wand");
+        meta.setLore(Collections.singletonList("A magical wand for setting locations"));
+        locationWand.setItemMeta(meta);
+
+        // Give the custom location wand stick to the player
+        player.getInventory().addItem(locationWand);
+        player.sendMessage("You received a Location Wand.");
+
         return true;
     }
 }
+
+
