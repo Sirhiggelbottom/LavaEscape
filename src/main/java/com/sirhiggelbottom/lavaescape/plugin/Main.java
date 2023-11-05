@@ -5,8 +5,6 @@ import com.sirhiggelbottom.lavaescape.plugin.commands.commandLocationWand;
 import com.sirhiggelbottom.lavaescape.plugin.config.ConfigManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Objects;
-
 public class Main extends JavaPlugin {
     private final ConfigManager configManager;
     private final String arenaName;
@@ -28,7 +26,8 @@ public class Main extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new Arena(this, null, arenaName), this);
 
         // Register commands
-        Objects.requireNonNull(getCommand("Lwand")).setExecutor(new commandLocationWand());
+        getCommand("Lwand").setExecutor(new commandLocationWand());
+        getCommand("Lwand").setTabCompleter(new commandLocationWand());
     }
 
     @Override

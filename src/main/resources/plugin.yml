@@ -4,9 +4,8 @@ name: LavaEscape
 author: Sirhiggelbottom
 website: https://github.com/Sirhiggelbottom
 
-#commands:
-#  Lwand:
-
+commands:
+  commandLocationWand:
 
 permissions:
   lavaescape.admin:
