@@ -5,10 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="59663720-f0ed-437f-8eba-45ebb01e6bc8" name="Changes" comment="V0.0.1.2">
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/Arena/Arena.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/LavaEscapePlugin.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaManager.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ConfigManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/Main.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/commandLocationWand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/commandLocationWand.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/plugin.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/plugin.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/Main.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/arena/Arena.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/arena/ArenaManager.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/commandLocationWand.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/config/ConfigManager.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/plugin.yml" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
