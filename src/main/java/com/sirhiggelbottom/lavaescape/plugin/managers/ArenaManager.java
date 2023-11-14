@@ -9,10 +9,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class ArenaManager {
     private final LavaEscapePlugin plugin;
@@ -67,7 +64,7 @@ public class ArenaManager {
         saveArena(arena);
     }
 
-    private void saveArena(Arena arena) {
+    public void saveArena(Arena arena) {
         String basePath = "arenas." + arena.getName();
         saveLocationToConfig(basePath + ".arena.pos1", arena.getArenaLoc1());
         saveLocationToConfig(basePath + ".arena.pos2", arena.getArenaLoc2());
@@ -122,6 +119,18 @@ public class ArenaManager {
         LAVA,
         DEATHMATCH
     }
+    public Arena getArena(String arenaName) {
+        return arenas.get(arenaName);
+    }
+    public List<String> getArenaS() {
+        List<String> arenaNames = new ArrayList<>();
+        ConfigurationSection arenasSection = configManager.getArenaConfig().getConfigurationSection("arenas.");
+        if (arenasSection != null) {
+            arenaNames.addAll(arenasSection.getKeys(false));
+        } else if (arenasSection == null) return null;
+        return arenaNames;
+    }
+}
 
 // Additional methods and utilities as necessary
 

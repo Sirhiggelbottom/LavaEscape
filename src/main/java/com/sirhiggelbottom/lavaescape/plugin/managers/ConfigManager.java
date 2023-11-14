@@ -126,6 +126,10 @@ public class ConfigManager {
         List<Map<String, Object>> itemsList = (List<Map<String, Object>>) config.getList("game-settings.start-items");
         return parseItemsList(itemsList);
     }
+    public FileConfiguration getArenaConfig() {
+        return arenaConfig;
+    }
+
     // Additional utility methods for game settings
 }
 

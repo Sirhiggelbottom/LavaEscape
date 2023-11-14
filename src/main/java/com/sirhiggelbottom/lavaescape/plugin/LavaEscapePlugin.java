@@ -1,17 +1,23 @@
 package com.sirhiggelbottom.lavaescape.plugin;
 
+import com.sirhiggelbottom.lavaescape.plugin.commands.LavaCommandExecutor;
+import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class LavaEscapePlugin extends JavaPlugin {
 
-    private GameManager gameManager;
+//    private GameManager gameManager;
     private ConfigManager configManager;
     private ArenaManager arenaManager;
     private LavaCommandExecutor commandExecutor;
-    private LobbyManager lobbyManager;
-    private UtilityClass utilityClass; // Placeholder for any utility class you may need
+    private final GameEvents gameEvents;
+
+    public LavaEscapePlugin(GameEvents gameEvents) {
+        this.gameEvents = gameEvents;
+    }
 
     @Override
     public void onEnable() {
@@ -21,21 +27,14 @@ public class LavaEscapePlugin extends JavaPlugin {
         // Initialize ArenaManager
         arenaManager = new ArenaManager(this, configManager);
 
-        // Initialize LobbyManager
-        lobbyManager = new LobbyManager(this, arenaManager);
-
-        // Initialize GameManager
-        gameManager = new GameManager(this, configManager, arenaManager, lobbyManager);
+        this.getServer().getPluginManager().registerEvents(new GameEvents(this), this);
 
         // Initialize command executor and bind commands
-        commandExecutor = new LavaCommandExecutor(this, gameManager, configManager, arenaManager, lobbyManager);
+        commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager);
         getCommand("lava").setExecutor(commandExecutor);
 
         // Implementing Tab Completer for the commands
         getCommand("lava").setTabCompleter((TabCompleter) commandExecutor);
-
-        // Initialize any utility classes
-        utilityClass = new UtilityClass();
 
         // Any additional setup such as event listeners
     }
@@ -46,11 +45,6 @@ public class LavaEscapePlugin extends JavaPlugin {
         // Save any necessary data and perform cleanup
     }
 
-    // Getters for various managers if needed
-    public GameManager getGameManager() {
-        return gameManager;
-    }
-
     public ConfigManager getConfigManager() {
         return configManager;
     }
@@ -59,9 +53,4 @@ public class LavaEscapePlugin extends JavaPlugin {
         return arenaManager;
     }
 
-    public LobbyManager getLobbyManager() {
-        return lobbyManager;
-    }
-
-    // Additional methods or utilities
 }

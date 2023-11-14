@@ -1,0 +1,22 @@
+# Arena configurations
+arenas:
+  arena1:
+    min-players: 3
+    max-players: 15
+    lobby:
+      world: world
+      x1: 100
+      y1: 64
+      z1: 100
+      x2: 110
+      y2: 70
+      z2: 110
+    arena:
+      world: world
+      x1: 120
+      y1: 64
+      z1: 120
+      x2: 140
+      y2: 90
+      z2: 140
+  # Additional arenas can be added in a similar structure

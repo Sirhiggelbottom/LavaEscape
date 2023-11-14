@@ -1,0 +1,18 @@
+# Global game settings
+game-settings:
+  grace-period: 60 # Duration of the grace period in seconds
+  start-items: # List of items given to players at the start of the game
+    - item: WOODEN_SWORD
+      amount: 1
+    - item: STONE_PICKAXE
+      amount: 1
+  chest-items: # List of possible items to appear in chests
+    - item: IRON_SWORD
+      amount: 1
+    - item: GOLDEN_APPLE
+      amount: 2
+
+# Blacklisted blocks that players cannot break
+blacklisted-blocks:
+  - BEDROCK
+  - OBSIDIAN
