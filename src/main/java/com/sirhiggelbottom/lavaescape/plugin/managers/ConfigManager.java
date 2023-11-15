@@ -21,9 +21,8 @@ public class ConfigManager {
 
     public ConfigManager(LavaEscapePlugin plugin) {
         this.plugin = plugin;
-        loadConfig();
+        this.loadConfig();
     }
-
     private void loadConfig() {
         // Load or create the config.yml
         configFile = new File(plugin.getDataFolder(), "config.yml");

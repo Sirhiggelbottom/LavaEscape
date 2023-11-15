@@ -60,9 +60,24 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             case "join":
             case "leave":
                 return handleJoinLeaveCommand(sender, args);
+            case "list":
+                return handleListCommand(sender);
+            case "help":
+                return handleHelpCommand(sender);
             default:
                 return false;
         }
+    }
+
+    private boolean handleListCommand(CommandSender sender) {
+        List<String> arenaNames = arenaManager.getArenaS();
+        if(arenaNames == null){
+        sender.sendMessage("There are no arenas");
+        return true;
+        }
+        sender.sendMessage(arenaManager.getArenaS().toString());
+
+        return true;
     }
 
     private boolean handleCreateCommand(CommandSender sender, String[] args) {
@@ -75,7 +90,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage("An arena with this name already exists.");
             return true;
         }
-        arenaManager.createOrUpdateArena(arenaName, null, null, null, null); // Placeholder for actual locations
+//        arenaManager.createOrUpdateArena(arenaName, null, null, null, null); // Placeholder for actual locations
+        arenaManager.createArena(arenaName); // Placeholder for actual locations
         sender.sendMessage("Arena '" + arenaName + "' has been created.");
         return true;
     }
@@ -86,6 +102,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage("Only a player can use the wand.");
             return true;
         }
+
         Player player = (Player) sender;
         ItemStack wand = new ItemStack(Material.STICK, 1);
         ItemMeta meta = wand.getItemMeta();
@@ -137,19 +154,40 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
 
         switch (args[2].toLowerCase()) {
             case "arena":
-                arena.setLocations(pos1, pos2, arena.getLobbyLoc1(), arena.getLobbyLoc2());
+                if(arena.getLobbyLoc1() == null || arena.getLobbyLoc2() == null){
+                    arena.setLocations(pos1, pos2, null, null);
+                } else {
+                    arena.setLocations(pos1, pos2, arena.getLobbyLoc1(), arena.getLobbyLoc2());
+                }
                 break;
+
             case "lobby":
-                arena.setLocations(arena.getArenaLoc1(), arena.getArenaLoc2(), pos1, pos2);
+                if(arena.getArenaLoc1() == null || arena.getArenaLoc2() == null){
+                    arena.setLocations(null, null, pos1, pos2);
+                } else{
+                    arena.setLocations(arena.getArenaLoc1(), arena.getArenaLoc2(), pos1, pos2);
+                }
                 break;
+
             default:
                 player.sendMessage("Invalid area type. Use 'arena' or 'lobby'.");
                 return true;
         }
+        if(!(arena.getArenaLoc1() == null && arena.getArenaLoc2() == null)){
+            arenaManager.saveTheArena(arena);
+            return true;
+        } else if (!(arena.getLobbyLoc1() == null && arena.getLobbyLoc2() == null)) {
+            arenaManager.saveTheLobby(arena);
+            return true;
+        } else if (!(arena.getArenaLoc1() == null && arena.getArenaLoc2() == null && arena.getLobbyLoc1() == null && arena.getLobbyLoc2() == null)) {
+            arenaManager.saveArena(arena);
+            player.sendMessage("Set the " + args[2].toLowerCase() + " area for arena '" + arenaName + "'.");
+            return true;
+        } else {
+            sender.sendMessage("Error could not save positions");
 
-        arenaManager.saveArena(arena);
-        player.sendMessage("Set the " + args[2].toLowerCase() + " area for arena '" + arenaName + "'.");
-        return true;
+            return true;
+        }
     }
 
 
@@ -210,6 +248,11 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleHelpCommand(CommandSender sender) {
+        sender.sendMessage(this.getListOfCommands().toString());
+        return true;
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
@@ -225,7 +268,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                 case "stop":
                 case "join":
                 case "leave":
-                    return getListOfArenaNames();
+//                    return getListOfArenaNames();
+                    return arenaManager.getArenaS();
                 default:
                     break;
             }
@@ -247,11 +291,9 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         commands.add("reload");
         commands.add("join");
         commands.add("leave");
+        commands.add("list");
+        commands.add("help");
         return commands;
-    }
-
-    private List<String> getListOfArenaNames() {
-        return arenaManager.getArenaS();
     }
     // Additional helper methods and logic as necessary
 }
