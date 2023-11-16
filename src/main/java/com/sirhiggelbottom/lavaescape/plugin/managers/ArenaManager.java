@@ -10,19 +10,17 @@ import org.bukkit.entity.Player;
 
 
 import java.util.*;
+import java.util.logging.Level;
 
 public class ArenaManager {
     private final LavaEscapePlugin plugin;
     private final ConfigManager configManager;
     private final Map<String, Arena> arenaNames;
 
-    private final Set<Arena> arenaSet;
-
     public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.arenaNames = new HashMap<>();
-        this.arenaSet = new HashSet<>();
         loadArenas();
     }
 
@@ -30,10 +28,10 @@ public class ArenaManager {
         ConfigurationSection arenasSection = configManager.getArenaConfig().getConfigurationSection("arenas");
         if (arenasSection != null) {
             for (String arenaName : arenasSection.getKeys(false)) {
-//                arenaNames.put(arenaName, loadArena(arenaName));
-                Arena arena = new Arena(arenaName,null, null, null, null);
-                this.arenaSet.add(arena);
-
+                // Create a new Arena object with the specified name and null locations
+                Arena arena = new Arena(arenaName, null, null, null, null);
+                // Store the arena in the HashMap with the arena's name as the key
+                this.arenaNames.put(arenaName, arena);
             }
         }
     }
@@ -59,17 +57,6 @@ public class ArenaManager {
         return new Location(world, x, y, z);
     }
 
-    /*public void createOrUpdateArena(String arenaName, Location arenaLoc1, Location arenaLoc2, Location lobbyLoc1, Location lobbyLoc2) {
-        Arena arena = arenas.get(arenaName);
-        if (arena == null) {
-//            arena = new Arena(arenaName, arenaLoc1, arenaLoc2, lobbyLoc1, lobbyLoc2);
-            arena = new Arena(arenaName, null, null, null, null);
-            arenas.put(arenaName, arena);
-        } else {
-            arena.setLocations(arenaLoc1, arenaLoc2, lobbyLoc1, lobbyLoc2);
-        }
-        saveArena(arena);
-    }*/
 
     public void createArena(String arenaName) {
 
@@ -103,8 +90,54 @@ public class ArenaManager {
         saveLocationToConfig(basePath + ".lobby.pos2", arena.getLobbyLoc2());
         configManager.saveArenaConfig();
     }
+
     public void saveNewArena(Arena arena){
+        // Setting arena path in arena.yml file
         String basePath = "arenas." + arena.getName();
+
+        // Creating a new arena section in arena.yml
+        tryLogging(() -> configManager.getArenaConfig().createSection(basePath),
+                "an error occurred while creating a new section in arena.yml");
+
+        // Sets the arena name
+        tryLogging(() -> configManager.getArenaConfig().set(basePath + ".name", arena.getName()),
+                "an error occurred while assigning a name to new arena in arena.yml");
+
+        // Setting placeholder values for the locations to "none"
+        tryLogging(() ->{
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+            configurationSection.set(basePath + ".arena.pos1", "none");
+            configurationSection.set(basePath + ".arena.pos2", "none");
+            configurationSection.set(basePath + ".lobby.pos1", "none");
+            configurationSection.set(basePath + ".lobby.pos2", "none");
+        }, "an error occurred while assigning placeholder values to new arena in arena.yml");
+
+        // Saving the arena config to arena.yml
+        tryLogging(configManager::saveArenaConfig,
+                "an error occurred while saving the arena config to arena.yml");
+
+    }
+    public void tryLogging(Runnable action, String errorMessage){
+        try {
+            action.run();
+        } catch (Exception e){
+            plugin.getLogger().log(Level.SEVERE, errorMessage, e);
+        }
+    }
+
+    public void deleteArena(String arenaName){
+
+        if(!(arenaNames.containsKey(arenaName))){
+            return;
+        }
+
+        arenaNames.remove(arenaName);
+
+        String basePath = "arenas." + arenaName;
+
+        configManager.getArenaConfig().set(basePath,null);
+        configManager.saveArenaConfig();
+
     }
     private void saveLocationToConfig(String path, Location location) {
         configManager.getArenaConfig().set(path + ".world", location.getWorld().getName());

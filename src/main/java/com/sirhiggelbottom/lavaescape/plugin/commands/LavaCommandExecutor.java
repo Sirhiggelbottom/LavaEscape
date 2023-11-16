@@ -38,35 +38,100 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 0) {
             return false;
         }
-
+/* Command hierarchy:
+            arg[0]   arg[1]   arg[2]        arg[3]        arg[4]
+   /Lava -> arena -> start -> arenaName
+                  -> stop -> arenaName
+                  -> create -> arenaName
+                  -> delete -> arenaName
+                  -> config -> arenaName -> minplayers -> int
+                                         -> maxplayers -> int
+                                         -> mode -> string
+                                         -> set area -> arena
+                                                     -> lobby
+         -> reload
+         -> list
+         -> help
+         -> lwand
+         -> join -> arenaName
+         -> leave -> arenaName
+         */
         switch (args[0].toLowerCase()) {
-            case "create":
-                return handleCreateCommand(sender, args);
-            case "lwand":
-                return handleLwandCommand(sender);
             case "arena":
-            case "lobby":
-                return handleAreaCommand(sender, args);
-            case "minplayers":
-            case "maxplayers":
-                return handlePlayerLimitsCommand(sender, args);
-            case "mode":
-                return handleModeCommand(sender, args);
-            case "start":
-            case "stop":
-                return handleGameControlCommand(sender, args);
+                switch(args[1].toLowerCase()){
+                    case "start":
+                    case "stop":
+                        return handleGameControlCommand(sender, args);
+
+                    case "create":
+                        return handleCreateCommand(sender, args);
+
+                    case "delete":
+                        return handleDeleteCommand(sender, args);
+
+                    case "config":
+
+                        switch (args[3].toLowerCase()){
+                            case "minplayers":
+                            case "maxplayers":
+                                return handlePlayerLimitsCommand(sender, args);
+
+                            case "mode":
+                                return handleModeCommand(sender, args);
+
+                            case "set area":
+                                switch (args[4].toLowerCase()){
+                                    case "arena":
+                                    case "lobby":
+                                        return handleAreaCommand(sender, args);
+                                }
+                        }
+                }
             case "reload":
                 return handleReloadCommand(sender);
+
+            case "list":
+                return handleListCommand(sender);
+
+            case "help":
+                return handleHelpCommand(sender);
+
+            case "lwand":
+                return handleLwandCommand(sender);
+
             case "join":
             case "leave":
                 return handleJoinLeaveCommand(sender, args);
-            case "list":
-                return handleListCommand(sender);
-            case "help":
-                return handleHelpCommand(sender);
+
+                // TODO: 11/15/2023 change arena and lobby to set, and make arena and lobby args instead.
+
             default:
                 return false;
         }
+    }
+
+    private boolean handleDeleteCommand(CommandSender sender, String[] args) {
+        List<String> arenaNames = arenaManager.getArenaS();
+
+        if (args.length < 2) {
+            sender.sendMessage("Usage: /lava delete <name>");
+            return true;
+        }
+
+        if(arenaNames == null){
+            sender.sendMessage("There are no arenas");
+            return true;
+        }
+
+        String arenaName = args[1];
+        if (arenaManager.getArena(arenaName) == null) {
+            sender.sendMessage("This arena doesn't exist.");
+            return true;
+        }
+        arenaManager.deleteArena(arenaName);
+        sender.sendMessage("Arena '" + arenaName + "' has been deleted.");
+        return true;
+
     }
 
     private boolean handleListCommand(CommandSender sender) {
@@ -90,8 +155,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage("An arena with this name already exists.");
             return true;
         }
-//        arenaManager.createOrUpdateArena(arenaName, null, null, null, null); // Placeholder for actual locations
-        arenaManager.createArena(arenaName); // Placeholder for actual locations
+        arenaManager.createArena(arenaName);
         sender.sendMessage("Arena '" + arenaName + "' has been created.");
         return true;
     }
@@ -125,7 +189,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         Player player = (Player) sender;
 
         if (args.length < 3) {
-            player.sendMessage("Usage: /lava <name> arena|lobby");
+            player.sendMessage("Usage: /lava <name> arena or lobby");
             return true;
         }
 
@@ -154,40 +218,24 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
 
         switch (args[2].toLowerCase()) {
             case "arena":
-                if(arena.getLobbyLoc1() == null || arena.getLobbyLoc2() == null){
-                    arena.setLocations(pos1, pos2, null, null);
-                } else {
-                    arena.setLocations(pos1, pos2, arena.getLobbyLoc1(), arena.getLobbyLoc2());
-                }
+                arena.setArenaLocations(pos1 , pos2);
+                arenaManager.saveTheArena(arena);
+                player.sendMessage(arenaName + " arena area set");
                 break;
 
             case "lobby":
-                if(arena.getArenaLoc1() == null || arena.getArenaLoc2() == null){
-                    arena.setLocations(null, null, pos1, pos2);
-                } else{
-                    arena.setLocations(arena.getArenaLoc1(), arena.getArenaLoc2(), pos1, pos2);
-                }
+                arena.setLobbyLocations(pos1 , pos2);
+                arenaManager.saveTheLobby(arena);
+                player.sendMessage(arenaName + " lobby area set");
                 break;
 
             default:
                 player.sendMessage("Invalid area type. Use 'arena' or 'lobby'.");
                 return true;
         }
-        if(!(arena.getArenaLoc1() == null && arena.getArenaLoc2() == null)){
-            arenaManager.saveTheArena(arena);
-            return true;
-        } else if (!(arena.getLobbyLoc1() == null && arena.getLobbyLoc2() == null)) {
-            arenaManager.saveTheLobby(arena);
-            return true;
-        } else if (!(arena.getArenaLoc1() == null && arena.getArenaLoc2() == null && arena.getLobbyLoc1() == null && arena.getLobbyLoc2() == null)) {
-            arenaManager.saveArena(arena);
-            player.sendMessage("Set the " + args[2].toLowerCase() + " area for arena '" + arenaName + "'.");
-            return true;
-        } else {
-            sender.sendMessage("Error could not save positions");
 
             return true;
-        }
+
     }
 
 
@@ -196,7 +244,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     // Implementation for /Lava <name> minplayers <int> and /Lava <name> maxplayers <int>
     private boolean handlePlayerLimitsCommand(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sender.sendMessage("Usage: /lava <name> minplayers|maxplayers <int>");
+            sender.sendMessage("Usage: /lava <name> minplayers or maxplayers <int>");
             return true;
         }
         // Logic to set player limits for an arena
@@ -206,7 +254,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     // Implementation for /Lava <name> mode competitive and /Lava <name> mode server
     private boolean handleModeCommand(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sender.sendMessage("Usage: /lava <name> mode competitive|server");
+            sender.sendMessage("Usage: /lava <name> mode competitive or server");
             return true;
         }
         // Logic to set game mode for an arena
@@ -216,7 +264,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     // Implementation for /Lava <name> start and /Lava <name> stop
     private boolean handleGameControlCommand(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage("Usage: /lava <name> start|stop");
+            sender.sendMessage("Usage: /lava <name> start or stop");
             return true;
         }
         // Logic to control game start and stop
@@ -241,7 +289,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage("Usage: /lava <name> join|leave");
+            sender.sendMessage("Usage: /lava <name> join or leave");
             return true;
         }
         // Logic for player joining or leaving an arena
@@ -249,15 +297,42 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleHelpCommand(CommandSender sender) {
-        sender.sendMessage(this.getListOfCommands().toString());
+        if(sender.hasPermission("lavaescape.admin")){
+            sender.sendMessage(this.getListOfAdminCommands().toString());
+        } else {
+            sender.sendMessage(this.getListOfPlayerCommands().toString());
+        }
         return true;
     }
 
+    //ToDo Finish the command hierarchy for onTabComplete.
+
+    /* Command hierarchy:
+            arg[0]   arg[1]   arg[2]        arg[3]        arg[4]
+   /Lava -> arena -> start -> arenaName
+                  -> stop -> arenaName
+                  -> create -> arenaName
+                  -> delete -> arenaName
+                  -> config -> arenaName -> minplayers -> int
+                                         -> maxplayers -> int
+                                         -> mode -> string
+                                         -> set area -> arena
+                                                     -> lobby
+         -> reload
+         -> list
+         -> help
+         -> lwand
+         -> join -> arenaName
+         -> leave -> arenaName
+         */
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) {
-            return getListOfCommands();
-        } else if (args.length == 2) {
+        if (args.length == 1 && sender.hasPermission("lavaescape.admin")) {
+            return getListOfAdminCommands();
+        } else if (args.length == 1 && !(sender.hasPermission("lavaescape.admin"))) {
+            return getListOfPlayerCommands();
+        } else if (args.length == 2 && sender.hasPermission("lavaescape.admin")) {
             switch (args[0].toLowerCase()) {
                 case "arena":
                 case "lobby":
@@ -268,7 +343,16 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                 case "stop":
                 case "join":
                 case "leave":
-//                    return getListOfArenaNames();
+                case "delete":
+                    return arenaManager.getArenaS();
+                default:
+                    break;
+            }
+        } else if (args.length == 2 && !(sender.hasPermission("lavaescape.admin"))) {
+            switch (args[0].toLowerCase()) {
+                case "list":
+                case "join":
+                case "leave":
                     return arenaManager.getArenaS();
                 default:
                     break;
@@ -276,10 +360,11 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         }
         return Collections.emptyList();
     }
-
-    private List<String> getListOfCommands() {
+    // ToDo make a method that returns player commands and one that returns admin / op commands.
+    private List<String> getListOfAdminCommands() {
         List<String> commands = new ArrayList<>();
         commands.add("create");
+        commands.add("delete");
         commands.add("lwand");
         commands.add("arena");
         commands.add("lobby");
@@ -289,6 +374,16 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         commands.add("start");
         commands.add("stop");
         commands.add("reload");
+        commands.add("join");
+        commands.add("leave");
+        commands.add("list");
+        commands.add("help");
+        return commands;
+    }
+
+    private List<String> getListOfPlayerCommands(){
+        List<String> commands = new ArrayList<>();
+        commands.add("list");
         commands.add("join");
         commands.add("leave");
         commands.add("list");

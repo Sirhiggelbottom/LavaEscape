@@ -25,12 +25,23 @@ public class Arena {
         this.players = new HashSet<>();
     }
 
+    /*
     // Setters for locations
     public void setLocations(Location arenaLoc1, Location arenaLoc2, Location lobbyLoc1, Location lobbyLoc2) {
         this.arenaLoc1 = arenaLoc1;
         this.arenaLoc2 = arenaLoc2;
         this.lobbyLoc1 = lobbyLoc1;
         this.lobbyLoc2 = lobbyLoc2;
+    }*/
+
+    public void setArenaLocations(Location loc1, Location loc2){
+        this.arenaLoc1 = loc1;
+        this.arenaLoc2 = loc2;
+    }
+
+    public void setLobbyLocations(Location loc1, Location loc2){
+        this.lobbyLoc1 = loc1;
+        this.lobbyLoc2 = loc2;
     }
 
     // Getter and setter for game state
