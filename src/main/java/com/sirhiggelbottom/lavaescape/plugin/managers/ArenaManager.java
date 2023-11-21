@@ -12,6 +12,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
@@ -247,21 +248,23 @@ public class ArenaManager {
     private boolean isAir(Block block){
         return block.getType() == Material.AIR;
     }
-    public boolean setMinyLevel(Arena arena, int i){
+    public boolean setMinYLevel(Arena arena, int i, Player player){
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
 
         configurationSection.set(basepath + "Y-levels.Ymin", i);
         configManager.saveArenaConfig();
+        player.sendMessage("Ymin-level set to Ylevel: " + i);
         return true;
     }
 
-    public boolean setMaxyLevel(Arena arena, int i){
+    public boolean setMaxYLevel(Arena arena, int i,Player player){
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
 
         configurationSection.set(basepath + "Y-levels.Ymax", i);
         configManager.saveArenaConfig();
+        player.sendMessage("Ymax-level set to Ylevel: " + i);
         return true;
     }
 

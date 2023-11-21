@@ -129,6 +129,13 @@ public class ConfigManager {
         return arenaConfig;
     }
 
+    public void worldEditDIR(){
+        File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics");
+        if (!schematicDir.exists()) {
+            schematicDir.mkdirs();
+        }
+    }
+
     // Additional utility methods for game settings
 }
 

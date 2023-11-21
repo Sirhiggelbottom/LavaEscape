@@ -16,10 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private final LavaEscapePlugin plugin;
@@ -29,14 +26,12 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private final WorldeditAPI worldeditAPI;
 
 
-    public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager) {
+    public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager, WorldeditAPI worldeditAPI) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.configManager = configManager;
         this.gameEvents = gameEvents;
-        this.worldeditAPI = null;
-
-
+        this.worldeditAPI = worldeditAPI;
     }
 
     @Override
@@ -46,17 +41,17 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         }
 /* Command hierarchy:
             arg[0]   arg[1]   arg[2]        arg[3]        arg[4]
-   /Lava -> arena -> start -> arenaName
-                  -> stop -> arenaName
-                  -> create -> arenaName
-                  -> delete -> arenaName
-                  -> config -> arenaName -> minplayers -> int
+   /Lava -> arena -> arenaName -> start
+                  -> arenaName -> stop
+                  -> arenaName -> delete
+                  -> arenaName -> config  -> minplayers -> int
                                          -> maxplayers -> int
                                          -> mode -> string
                                          -> set-area -> arena
                                                      -> lobby
                                          -> miny     -> int
                                          -> maxy     -> int
+         -> create -> arenaName
          -> reload
          -> list
          -> help
@@ -66,16 +61,16 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
          */
         switch (args[0].toLowerCase()) {
             case "arena":
-                switch(args[1].toLowerCase()){
+                switch(args[2].toLowerCase()){
                     case "start":
                     case "stop":
                         return handleGameControlCommand(sender, args);
 
-                    case "create":
-                        return handleCreateCommand(sender, args);
+
 
                     case "delete":
                         return handleDeleteCommand(sender, args);
+
 
                     case "config":
 
@@ -83,15 +78,19 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                             case "minplayers":
                             case "maxplayers":
                                 return handlePlayerLimitsCommand(sender, args);
+
+
                             case "miny":
                             case "maxy":
                                 return handleYlevelCommand(sender, args);
+
 
                             case "mode":
                                 switch (args[4].toLowerCase()){
                                     case "competitive":
                                     case "server":
                                         return handleModeCommand(sender, args);
+
                                     default:
                                         break;
                                 }
@@ -102,11 +101,15 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                                     case "arena":
                                     case "lobby":
                                         return handleAreaCommand(sender, args);
+
                                     default:
                                         break;
                                 }
-                        }
-                }
+                        }break;
+                }break;
+            case "create":
+                return handleCreateCommand(sender, args);
+
             case "reload":
                 return handleReloadCommand(sender);
 
@@ -123,17 +126,16 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             case "leave":
                 return handleJoinLeaveCommand(sender, args);
 
-                // TODO: 11/15/2023 change arena and lobby to set, and make arena and lobby args instead.
-
             default:
                 return false;
-        }
+        }return true;
     }
 
     private boolean handleYlevelCommand(CommandSender sender, String[] args) {
 
         Player player = (Player) sender;
-        String arenaName = args[2];
+
+        String arenaName = args[1];
         if (!(sender instanceof Player)) {
             player.sendMessage("Only players can set arena and lobby areas.");
             return true;
@@ -144,9 +146,9 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         }
         switch (args[3].toLowerCase()){
             case "miny":
-                return arenaManager.setMinyLevel(arenaManager.getArena(arenaName),argToInt(sender,args[4]));
+                return arenaManager.setMinYLevel(arenaManager.getArena(arenaName),argToInt(sender,args[4]),player);
             case "maxy":
-                return arenaManager.setMaxyLevel(arenaManager.getArena(arenaName),argToInt(sender,args[4]));
+                return arenaManager.setMaxYLevel(arenaManager.getArena(arenaName),argToInt(sender,args[4]),player);
             default:
                 break;
         }
@@ -189,16 +191,20 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleCreateCommand(CommandSender sender, String[] args) {
+        String arenaName = args[1];
         if (args.length < 2) {
             sender.sendMessage("Usage: /lava create <name>");
             return true;
         }
-        String arenaName = args[1];
+
         if (arenaManager.getArena(arenaName) != null) {
             sender.sendMessage("An arena with this name already exists.");
+            sender.sendMessage("This was an error message from the create command.");
             return true;
         }
+        sender.sendMessage("trying to create arena");
         arenaManager.createArena(arenaName);
+        configManager.worldEditDIR();
         sender.sendMessage("Arena '" + arenaName + "' has been created.");
         return true;
     }
@@ -259,27 +265,27 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        switch (args[2].toLowerCase()) {
+        switch (args[4].toLowerCase()) {
             case "arena":
                 arena.setArenaLocations(pos1 , pos2);
                 arenaManager.saveTheArena(arena);
+                worldeditAPI.saveRegionAsSchematic(player,arenaName);
 
-                worldeditAPI.saveRegionAsSchematic(player, pos1, pos2, arenaName);
                 player.sendMessage(arenaName + " arena area set");
-                break;
+                return true;
 
             case "lobby":
                 arena.setLobbyLocations(pos1 , pos2);
                 arenaManager.saveTheLobby(arena);
                 player.sendMessage(arenaName + " lobby area set");
-                break;
+                return true;
 
             default:
                 player.sendMessage("Invalid area type. Use 'arena' or 'lobby'.");
-                return true;
+                return false;
         }
 
-            return true;
+
 
     }
 
@@ -393,10 +399,11 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         return Collections.emptyList();
     }
     private int argToInt(CommandSender sender, String arg){
+        sender.sendMessage("Number is: " + Integer.parseInt(arg));
         return Integer.parseInt(arg);
     }
     private int argLength(CommandSender sender ,String[] args){
-        sender.sendMessage("argLength debug message: method called");
+        //sender.sendMessage("argLength debug message: method called");
         return args.length;
     }
     /* Command hierarchy:

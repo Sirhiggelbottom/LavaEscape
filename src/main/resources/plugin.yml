@@ -7,7 +7,7 @@ description: A competitive and environmental survival Minecraft game where playe
 commands:
   lava:
     description: Base command for LavaEscape game management
-    usage: /<command> [create|lwand|join|leave|start|stop|reload|mode|arena|lobby|minplayers|maxplayers]
+    usage: /<command> [create lwand join leave start stop reload mode arena lobby minplayers maxplayers]
     aliases: [le, lavaescape]
 
 permissions:

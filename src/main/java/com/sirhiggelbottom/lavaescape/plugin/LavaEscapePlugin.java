@@ -14,6 +14,8 @@ public class LavaEscapePlugin extends JavaPlugin {
     private ArenaManager arenaManager;
     private GameEvents gameEvents;
 
+    private WorldeditAPI worldeditAPI;
+
 
     @Override
     public void onEnable() {
@@ -26,8 +28,10 @@ public class LavaEscapePlugin extends JavaPlugin {
         gameEvents = new GameEvents(this);
         this.getServer().getPluginManager().registerEvents(gameEvents, this);
 
+        worldeditAPI = new WorldeditAPI(this, configManager , arenaManager);
+
         // Initialize command executor and bind commands
-        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager);
+        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI);
 
         getCommand("lava").setExecutor(commandExecutor);
 
