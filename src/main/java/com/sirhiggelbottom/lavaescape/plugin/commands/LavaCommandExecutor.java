@@ -26,8 +26,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private final ArenaManager arenaManager;
     private final ConfigManager configManager;
     private final GameEvents gameEvents;
-
     private final WorldeditAPI worldeditAPI;
+
 
     public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager) {
         this.plugin = plugin;
@@ -35,6 +35,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         this.configManager = configManager;
         this.gameEvents = gameEvents;
         this.worldeditAPI = null;
+
 
     }
 
@@ -54,6 +55,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                                          -> mode -> string
                                          -> set-area -> arena
                                                      -> lobby
+                                         -> miny     -> int
+                                         -> maxy     -> int
          -> reload
          -> list
          -> help
@@ -80,6 +83,9 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                             case "minplayers":
                             case "maxplayers":
                                 return handlePlayerLimitsCommand(sender, args);
+                            case "miny":
+                            case "maxy":
+                                return handleYlevelCommand(sender, args);
 
                             case "mode":
                                 switch (args[4].toLowerCase()){
@@ -122,6 +128,29 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             default:
                 return false;
         }
+    }
+
+    private boolean handleYlevelCommand(CommandSender sender, String[] args) {
+
+        Player player = (Player) sender;
+        String arenaName = args[2];
+        if (!(sender instanceof Player)) {
+            player.sendMessage("Only players can set arena and lobby areas.");
+            return true;
+        }
+        if (!player.hasPermission("lavaescape.admin")) {
+            player.sendMessage("You do not have permission to set min/max y-level.");
+            return true;
+        }
+        switch (args[3].toLowerCase()){
+            case "miny":
+                return arenaManager.setMinyLevel(arenaManager.getArena(arenaName),argToInt(sender,args[4]));
+            case "maxy":
+                return arenaManager.setMaxyLevel(arenaManager.getArena(arenaName),argToInt(sender,args[4]));
+            default:
+                break;
+        }
+        return true;
     }
 
     private boolean handleDeleteCommand(CommandSender sender, String[] args) {
@@ -323,8 +352,6 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    //ToDo Finish the command hierarchy for onTabComplete.
-
     /* Command hierarchy:
             arg[0]   arg[1]   arg[2]        arg[3]        arg[4]
    /Lava -> arena -> start -> arenaName
@@ -333,9 +360,11 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                   -> delete -> arenaName
                   -> config -> arenaName -> minplayers -> int
                                          -> maxplayers -> int
-                                         -> mode    -> string
+                                         -> mode -> string
                                          -> set-area -> arena
                                                      -> lobby
+                                         -> miny     -> int
+                                         -> maxy     -> int
          -> reload
          -> list
          -> help
@@ -363,7 +392,9 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         }
         return Collections.emptyList();
     }
-
+    private int argToInt(CommandSender sender, String arg){
+        return Integer.parseInt(arg);
+    }
     private int argLength(CommandSender sender ,String[] args){
         sender.sendMessage("argLength debug message: method called");
         return args.length;
@@ -376,9 +407,11 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                   -> delete -> arenaName
                   -> config -> arenaName -> minplayers -> int
                                          -> maxplayers -> int
-                                         -> mode    -> string
+                                         -> mode -> string
                                          -> set-area -> arena
                                                      -> lobby
+                                         -> miny     -> int
+                                         -> maxy     -> int
          -> reload
          -> list
          -> help
@@ -439,6 +472,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                     commands.add("maxplayers");
                     commands.add("mode");
                     commands.add("set-area");
+                    commands.add("miny");
+                    commands.add("maxy");
                 }
                 break;
             case 5:

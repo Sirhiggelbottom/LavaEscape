@@ -22,11 +22,6 @@ import java.io.IOException;
 
 
 public class WorldeditAPI {
-    private final Clipboard clipboard;
-
-    public WorldeditAPI(Clipboard clipboard) {
-        this.clipboard = clipboard;
-    }
 
     public void saveRegionAsSchematic(Player player, Location pos1, Location pos2, String arenaName) {
         WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");

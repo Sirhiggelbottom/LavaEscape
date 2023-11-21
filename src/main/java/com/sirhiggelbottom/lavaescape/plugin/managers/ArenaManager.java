@@ -247,6 +247,23 @@ public class ArenaManager {
     private boolean isAir(Block block){
         return block.getType() == Material.AIR;
     }
+    public boolean setMinyLevel(Arena arena, int i){
+        String basepath = "arenas." + arena.getName();
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+        configurationSection.set(basepath + "Y-levels.Ymin", i);
+        configManager.saveArenaConfig();
+        return true;
+    }
+
+    public boolean setMaxyLevel(Arena arena, int i){
+        String basepath = "arenas." + arena.getName();
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+        configurationSection.set(basepath + "Y-levels.Ymax", i);
+        configManager.saveArenaConfig();
+        return true;
+    }
 
 }
 
