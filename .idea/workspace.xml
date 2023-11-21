@@ -5,12 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="59663720-f0ed-437f-8eba-45ebb01e6bc8" name="Changes" comment="V0.0.1.2">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/API/WorldeditAPI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/API/WorldeditAPI.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/LavaEscapePlugin.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/LavaEscapePlugin.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/LavaCommandExecutor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/LavaCommandExecutor.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaManager.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,10 +55,10 @@
     "git-widget-placeholder": "test",
     "ignore.virus.scanning.warn.message": "true",
     "onboarding.tips.debug.path": "C:/Users/a/Documents/GitHub/LavaEscape/src/main/java/org/example/Main.java",
-    "project.structure.last.edited": "Modules",
+    "project.structure.last.edited": "Project",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "advanced.settings"
+    "settings.editor.selected.configurable": "preferences.editor"
   }
 }]]></component>
   <component name="RecentsManager">
