@@ -5,6 +5,7 @@ import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
 import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
+import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -26,11 +27,15 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private final ConfigManager configManager;
     private final GameEvents gameEvents;
 
+    private final WorldeditAPI worldeditAPI;
+
     public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.configManager = configManager;
         this.gameEvents = gameEvents;
+        this.worldeditAPI = null;
+
     }
 
     @Override
@@ -229,6 +234,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             case "arena":
                 arena.setArenaLocations(pos1 , pos2);
                 arenaManager.saveTheArena(arena);
+
+                worldeditAPI.saveRegionAsSchematic(player, pos1, pos2, arenaName);
                 player.sendMessage(arenaName + " arena area set");
                 break;
 
@@ -340,28 +347,6 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
 
-        /*if (args.length == 1 && sender.hasPermission("lavaescape.admin")) {
-            return getListOfAdminCommands(sender, args);
-        } else if (args.length == 1 && !(sender.hasPermission("lavaescape.admin"))) {
-            return getListOfPlayerCommands();
-        } else if (args.length == 2 && sender.hasPermission("lavaescape.admin")) {
-            switch (args[0].toLowerCase()) {
-                case "arena":
-                case "lobby":
-                case "minplayers":
-                case "maxplayers":
-                case "mode":
-                case "start":
-                case "stop":
-                case "join":
-                case "leave":
-                case "delete":
-                    return arenaManager.getArenaS();
-                default:
-                    break;
-            }
-        }*/
-
         if(sender.hasPermission("lavaescape.admin")){
             return getListOfAdminCommands(sender, args);
         }
@@ -403,7 +388,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
          */
     private List<String> getListOfAdminCommands(CommandSender sender, String[] args) {
         List<String> commands = new ArrayList<>();
-        sender.sendMessage("Admin list debug message: Method called");
+        //sender.sendMessage("Admin list debug message: Method called");
 
         switch (argLength(sender , args)){
             case 1:
@@ -482,7 +467,6 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         commands.add("list");
         commands.add("join");
         commands.add("leave");
-        commands.add("list");
         commands.add("help");
         return commands;
     }

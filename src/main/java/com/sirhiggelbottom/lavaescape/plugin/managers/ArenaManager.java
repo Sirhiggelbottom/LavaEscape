@@ -1,14 +1,23 @@
 package com.sirhiggelbottom.lavaescape.plugin.managers;
 
-import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
-
+import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
+import com.sk89q.worldedit.extent.clipboard.Clipboard;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
+import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.session.ClipboardHolder;
+import com.sk89q.worldedit.world.block.BlockState;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
-
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
 
@@ -196,6 +205,49 @@ public class ArenaManager {
         } else return null;
         return arenaNames;
     }
+    public List<BlockVector3> findSpawnPoints(String arenaName, int yMin, int yMax) {
+        File schematicFile = new File("path/to/schematic/" + arenaName + ".schem");
+        List<BlockVector3> spawnPoints = new ArrayList<>();
+        while (spawnPoints.size() <= 150){
+            try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
+                Clipboard clipboard = reader.read();
+                for (BlockVector3 point : clipboard.getRegion()) {
+                    int y = point.getBlockY();
+                    if (y >= yMin && y <= yMax) {
+                        Block ground = (Block) clipboard.getBlock(point);
+                        Block space1 = (Block) clipboard.getBlock(point.add(0, 1, 0));
+                        Block space2 = (Block) clipboard.getBlock(point.add(0, 2, 0));
+
+
+
+                        // Check criteria: on solid ground, not a tree, not inside a block, enough space above
+                        if (isSolidGround(ground) && !isTree(ground) && isAir(space1) && isAir(space2) && spawnPoints.stream().noneMatch(item -> item.equals(point))) {
+                            spawnPoints.add(point);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+
+        return spawnPoints;
+    }
+
+    private boolean isSolidGround(Block block){
+        return block.getType().isSolid();
+    }
+
+    private boolean isTree(Block block){
+        Material type = block.getType();
+        return type.toString().endsWith("_LOG") || type.toString().endsWith("_LEAVES");
+    }
+
+    private boolean isAir(Block block){
+        return block.getType() == Material.AIR;
+    }
+
 }
 
 // Additional methods and utilities as necessary
