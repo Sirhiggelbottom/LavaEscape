@@ -65,7 +65,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                     case "start":
                     case "stop":
                         return handleGameControlCommand(sender, args);
-
+                    case "restart":
+                        return handleRestartCommand(sender,args);
 
 
                     case "delete":
@@ -129,6 +130,22 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             default:
                 return false;
         }return true;
+    }
+
+    private boolean handleRestartCommand(CommandSender sender, String[] args) {
+
+        if(!sender.hasPermission("lavaescape.admin")){
+            sender.sendMessage("You do not have permission to restart a arena.");
+            return true;
+        }
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only players can restart a arena");
+            return true;
+        }
+        String arenaName = args[1];
+        worldeditAPI.placeSchematic(sender, arenaName);
+
+        return true;
     }
 
     private boolean handleYlevelCommand(CommandSender sender, String[] args) {
@@ -399,7 +416,6 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         return Collections.emptyList();
     }
     private int argToInt(CommandSender sender, String arg){
-        sender.sendMessage("Number is: " + Integer.parseInt(arg));
         return Integer.parseInt(arg);
     }
     private int argLength(CommandSender sender ,String[] args){
@@ -467,6 +483,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                 if (matchFound) {
                         commands.add("start");
                         commands.add("stop");
+                        commands.add("restart");
                         commands.add("config");
 
                 }

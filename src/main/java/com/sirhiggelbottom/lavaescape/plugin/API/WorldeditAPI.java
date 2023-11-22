@@ -4,26 +4,29 @@ import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
+import com.sk89q.worldedit.EditSession;
+import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 import com.sk89q.worldedit.extent.clipboard.BlockArrayClipboard;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
-import com.sk89q.worldedit.extent.clipboard.io.BuiltInClipboardFormat;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
+import com.sk89q.worldedit.extent.clipboard.io.*;
+import com.sk89q.worldedit.function.operation.Operation;
+import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.session.ClipboardHolder;
 import com.sk89q.worldedit.world.World;
 import com.sk89q.worldedit.regions.CuboidRegion;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardWriter;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Optional;
 
 
 public class WorldeditAPI {
@@ -36,39 +39,6 @@ public class WorldeditAPI {
         this.configManager = configManager;
         this.arenaManager = arenaManager;
     }
-    /*public void saveRegionAsSchematic(Player player, Location pos1, Location pos2, String arenaName) {
-        player.sendMessage("Trying to save schematic");
-        WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
-        if (worldEdit == null) {
-            player.sendMessage("WorldEdit not found.");
-            return;
-        }
-
-        arenaManager.tryLogging(configManager::worldEditDIR,"Error when trying to create schematics directory");
-
-
-        File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics");
-        File schematicFile = new File(schematicDir, arenaName + ".schem");
-
-
-
-
-        World world = BukkitAdapter.adapt(player.getWorld());
-        BlockVector3 point1 = BlockVector3.at(pos1.getX(), pos1.getY(), pos1.getZ());
-        BlockVector3 point2 = BlockVector3.at(pos2.getX(), pos2.getY(), pos2.getZ());
-
-        CuboidRegion region = new CuboidRegion(world, point1, point2);
-        Clipboard clipboard = new BlockArrayClipboard(region);
-
-        try (ClipboardWriter writer = Objects.requireNonNull(ClipboardFormats.findByFile(schematicFile)).getWriter(new FileOutputStream(schematicFile))) {
-            writer.write(clipboard);
-            player.sendMessage("Schematic saved as " + schematicFile.getName());
-        } catch (IOException e) {
-            player.sendMessage("Error saving schematic: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-    }*/
 
     public void saveRegionAsSchematic(Player player, String arenaName) {
         Arena arena = arenaManager.getArena(arenaName);
@@ -101,6 +71,7 @@ public class WorldeditAPI {
 
         CuboidRegion region = new CuboidRegion(world, point1, point2);
         Clipboard clipboard = new BlockArrayClipboard(region);
+        clipboard.setOrigin(region.getMinimumPoint());
 
 
         try (ClipboardWriter writer = BuiltInClipboardFormat.SPONGE_SCHEMATIC.getWriter(new FileOutputStream(schematicFile))) {
@@ -112,19 +83,69 @@ public class WorldeditAPI {
         }
     }
 
-    public ClipboardHolder loadSchematic(String arenaName) {
-        File schematicDir = new File(Bukkit.getPluginManager().getPlugin("LavaEscape").getDataFolder(), "schematics");
+    public Clipboard loadSchematic(String arenaName, CommandSender sender) {
+        File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics");
         File schematicFile = new File(schematicDir, arenaName + ".schem");
 
         if (!schematicFile.exists()) {
+            sender.sendMessage("schematic doesn't exist");
             return null; // Or handle this case as needed
         }
 
-        try (ClipboardReader reader = ClipboardFormats.findByFile(schematicFile).getReader(new FileInputStream(schematicFile))) {
-            return new ClipboardHolder(reader.read());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
+        Clipboard clipboard;
+
+        ClipboardFormat format = ClipboardFormats.findByFile(schematicFile);
+        try (ClipboardReader reader = format.getReader(new FileInputStream(schematicFile))){
+            clipboard = reader.read();
+            }catch (Exception e){
+                sender.sendMessage("Error saving schematic: " + e.getMessage());
+                e.printStackTrace();
+                return null;
+            }
+
+        return clipboard;
+
     }
+
+    public void placeSchematic(CommandSender sender, String arenaName){
+
+        /*int x = point3.getX();
+        int y = point3.getY();
+        int z = point3.getZ();*/
+        Player player = (Player) sender;
+        Clipboard clipboard = loadSchematic(arenaName,sender);
+        World world = BukkitAdapter.adapt(player.getWorld());
+        BlockVector3 point = findMinimumPoint(sender,arenaName);
+
+        try (EditSession editSession = WorldEdit.getInstance().newEditSession(world)) {
+            Operation operation = new ClipboardHolder(clipboard)
+                    .createPaste(editSession)
+                    .to(point)
+                    // configure here
+                    .build();
+            Operations.complete(operation);
+        }catch (Exception e){
+            sender.sendMessage("Error when pasting schematic " + e.getMessage());
+            e.printStackTrace();
+
+        }
+
+
+    }
+    private BlockVector3 findMinimumPoint(CommandSender sender,String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
+        Player player = (Player) sender;
+
+        Location pos1 = arena.getArenaLoc1();
+        Location pos2 = arena.getArenaLoc2();
+
+        World world = BukkitAdapter.adapt(player.getWorld());
+        BlockVector3 point1 = BlockVector3.at(pos1.getX(), pos1.getY(), pos1.getZ());
+        BlockVector3 point2 = BlockVector3.at(pos2.getX(), pos2.getY(), pos2.getZ());
+
+        CuboidRegion region = new CuboidRegion(world, point1, point2);
+
+        return region.getMinimumPoint();
+    }
+
 }
