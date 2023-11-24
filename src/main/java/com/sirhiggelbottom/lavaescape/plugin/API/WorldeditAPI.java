@@ -6,11 +6,13 @@ import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
+import com.sk89q.worldedit.WorldEditException;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 import com.sk89q.worldedit.extent.clipboard.BlockArrayClipboard;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.extent.clipboard.io.*;
+import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
 import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.math.BlockVector3;
@@ -40,7 +42,7 @@ public class WorldeditAPI {
         this.arenaManager = arenaManager;
     }
 
-    public void saveRegionAsSchematic(Player player, String arenaName) {
+    public void saveRegionAsSchematic(Player player, String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
 
         if (arena == null || arena.getArenaLoc1() == null || arena.getArenaLoc2() == null) {
@@ -71,7 +73,18 @@ public class WorldeditAPI {
 
         CuboidRegion region = new CuboidRegion(world, point1, point2);
         Clipboard clipboard = new BlockArrayClipboard(region);
-        clipboard.setOrigin(region.getMinimumPoint());
+//        clipboard.setOrigin(region.getMinimumPoint());
+
+        ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
+                world, region, clipboard, region.getMinimumPoint()
+        );
+        // configure here
+        try {
+            Operations.complete(forwardExtentCopy);
+        }catch (Exception e){
+            player.sendMessage("Error copying region: " + e.getMessage());
+            e.printStackTrace();
+        }
 
 
         try (ClipboardWriter writer = BuiltInClipboardFormat.SPONGE_SCHEMATIC.getWriter(new FileOutputStream(schematicFile))) {
@@ -82,6 +95,26 @@ public class WorldeditAPI {
             e.printStackTrace();
         }
     }
+
+    public void deleteSchematic(CommandSender sender,String arenaName) {
+        Player player = (Player) sender;
+        Arena arena = arenaManager.getArena(arenaName);
+        File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics");
+        File schematicFile = new File(schematicDir, arenaName + ".schem");
+        WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
+
+        if (arena == null || !schematicFile.exists() || worldEdit == null) {
+            player.sendMessage("Error: Arena not found, file does not exist, or WorldEdit not found.");
+            return;
+        }
+
+        if (schematicFile.delete()) {
+            player.sendMessage("Schematic deleted successfully.");
+        } else {
+            player.sendMessage("Error: Could not delete the schematic.");
+        }
+    }
+
 
     public Clipboard loadSchematic(String arenaName, CommandSender sender) {
         File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics");
@@ -107,31 +140,33 @@ public class WorldeditAPI {
 
     }
 
-    public void placeSchematic(CommandSender sender, String arenaName){
+    public void placeSchematic(CommandSender sender, String arenaName) {
+        File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics");
+        File schematicFile = new File(schematicDir, arenaName + ".schem");
+        Clipboard clipboard = loadSchematic(arenaName, sender);
+        if (clipboard == null) {
+            sender.sendMessage("Failed to load schematic.");
+            return;
+        }
 
-        /*int x = point3.getX();
-        int y = point3.getY();
-        int z = point3.getZ();*/
         Player player = (Player) sender;
-        Clipboard clipboard = loadSchematic(arenaName,sender);
         World world = BukkitAdapter.adapt(player.getWorld());
-        BlockVector3 point = findMinimumPoint(sender,arenaName);
+        BlockVector3 point = findMinimumPoint(sender, arenaName);
 
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(world)) {
             Operation operation = new ClipboardHolder(clipboard)
                     .createPaste(editSession)
                     .to(point)
-                    // configure here
+                    .ignoreAirBlocks(true) // Include this if you want to paste air blocks as well
                     .build();
             Operations.complete(operation);
-        }catch (Exception e){
-            sender.sendMessage("Error when pasting schematic " + e.getMessage());
+            sender.sendMessage("Schematic: " + schematicFile + " successfully pasted at: " + point.getX() + " " + point.getY() + " " + point.getZ());
+        } catch (Exception e) {
+            sender.sendMessage("Error when pasting schematic: " + e.getMessage());
             e.printStackTrace();
-
         }
-
-
     }
+
     private BlockVector3 findMinimumPoint(CommandSender sender,String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
         Player player = (Player) sender;

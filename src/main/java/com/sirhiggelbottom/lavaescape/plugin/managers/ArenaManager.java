@@ -1,5 +1,6 @@
 package com.sirhiggelbottom.lavaescape.plugin.managers;
 
+import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
@@ -26,11 +27,13 @@ public class ArenaManager {
     private final LavaEscapePlugin plugin;
     private final ConfigManager configManager;
     private final Map<String, Arena> arenaNames;
+    private final WorldeditAPI worldeditAPI;
 
-    public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager) {
+    public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager, WorldeditAPI worldeditAPI) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.arenaNames = new HashMap<>();
+        this.worldeditAPI = new WorldeditAPI(plugin,configManager, this);
         loadArenas();
     }
 
@@ -135,7 +138,7 @@ public class ArenaManager {
         }
     }
 
-    public void deleteArena(String arenaName){
+    public void deleteArena(CommandSender sender, String arenaName){
 
         if(!(arenaNames.containsKey(arenaName))){
             return;
@@ -146,6 +149,7 @@ public class ArenaManager {
         String basePath = "arenas." + arenaName;
 
         configManager.getArenaConfig().set(basePath,null);
+        worldeditAPI.deleteSchematic(sender, arenaName);
         configManager.saveArenaConfig();
 
     }
@@ -252,7 +256,7 @@ public class ArenaManager {
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
 
-        configurationSection.set(basepath + "Y-levels.Ymin", i);
+        configurationSection.set(basepath + ".Y-levels.Ymin", i);
         configManager.saveArenaConfig();
         player.sendMessage("Ymin-level set to Ylevel: " + i);
         return true;
@@ -262,7 +266,7 @@ public class ArenaManager {
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
 
-        configurationSection.set(basepath + "Y-levels.Ymax", i);
+        configurationSection.set(basepath + ".Y-levels.Ymax", i);
         configManager.saveArenaConfig();
         player.sendMessage("Ymax-level set to Ylevel: " + i);
         return true;

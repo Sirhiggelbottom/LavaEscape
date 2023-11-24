@@ -44,6 +44,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
    /Lava -> arena -> arenaName -> start
                   -> arenaName -> stop
                   -> arenaName -> delete
+                  -> arenaName -> restart
                   -> arenaName -> config  -> minplayers -> int
                                          -> maxplayers -> int
                                          -> mode -> string
@@ -190,7 +191,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage("This arena doesn't exist.");
             return true;
         }
-        arenaManager.deleteArena(arenaName);
+        arenaManager.deleteArena(sender,arenaName);
         sender.sendMessage("Arena '" + arenaName + "' has been deleted.");
         return true;
 
@@ -452,7 +453,6 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                 commands.add("arena");
                 commands.add("reload");
                 commands.add("create");
-                commands.add("delete");
                 commands.add("list");
                 commands.add("help");
                 commands.add("lwand");
@@ -483,6 +483,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                 if (matchFound) {
                         commands.add("start");
                         commands.add("stop");
+                        commands.add("delete");
                         commands.add("restart");
                         commands.add("config");
 
