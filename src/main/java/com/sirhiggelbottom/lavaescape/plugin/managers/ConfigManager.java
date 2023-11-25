@@ -18,6 +18,8 @@ public class ConfigManager {
     private FileConfiguration config;
     private File arenaFile;
     private FileConfiguration arenaConfig;
+    private File spawnPointFile;
+    private FileConfiguration spawnPointConfig;
 
     public ConfigManager(LavaEscapePlugin plugin) {
         this.plugin = plugin;
@@ -42,6 +44,18 @@ public class ConfigManager {
             }
         }
         arenaConfig = YamlConfiguration.loadConfiguration(arenaFile);
+
+        //Load or create the spawnPoint.yml
+        spawnPointFile = new File (plugin.getDataFolder(), "spawnPoint.yml");
+        if(!spawnPointFile.exists()){
+            try{
+                spawnPointFile.createNewFile();
+            }catch (IOException e){
+                plugin.getLogger().severe("Could not create spawnPoints.yml!");
+                e.printStackTrace();
+            }
+        }
+        spawnPointConfig = YamlConfiguration.loadConfiguration(spawnPointFile);
     }
 
     // Save the config.yml
@@ -60,6 +74,17 @@ public class ConfigManager {
             arenaConfig.save(arenaFile);
         } catch (IOException e) {
             plugin.getLogger().severe("Could not save Arena.yml!");
+            e.printStackTrace();
+        }
+    }
+
+    // Save the spawnPoint.yml
+
+    public void saveSpawnPointConfig(){
+        try{
+            spawnPointConfig.save(spawnPointFile);
+        }catch (IOException e){
+            plugin.getLogger().severe("Could not save spawnPoints.yml");
             e.printStackTrace();
         }
     }
@@ -127,6 +152,10 @@ public class ConfigManager {
     }
     public FileConfiguration getArenaConfig() {
         return arenaConfig;
+    }
+
+    public FileConfiguration getSpawnPointConfig(){
+        return spawnPointConfig;
     }
 
     public void worldEditDIR(){

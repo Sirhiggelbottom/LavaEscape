@@ -1,22 +1,27 @@
 package com.sirhiggelbottom.lavaescape.plugin.commands;
 
+import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
+import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
-import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
-import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private final LavaEscapePlugin plugin;
@@ -52,6 +57,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                                                      -> lobby
                                          -> miny     -> int
                                          -> maxy     -> int
+                                         -> createspawns
          -> create -> arenaName
          -> reload
          -> list
@@ -85,6 +91,9 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                             case "miny":
                             case "maxy":
                                 return handleYlevelCommand(sender, args);
+
+                            case "createspawns":
+                                return handleSpawnCreation(sender,args);
 
 
                             case "mode":
@@ -131,6 +140,42 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             default:
                 return false;
         }return true;
+    }
+
+    private boolean handleSpawnCreation(CommandSender sender, String[] args) {
+        String arenaName = args[1];
+        sender.sendMessage("Trying to start finding spawnpoints for: " + arenaName);
+        Arena arena = arenaManager.getArena(arenaName);
+        FileConfiguration config = configManager.getArenaConfig();
+        String basepath = "arenas." + arena.getName();
+        File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
+        File schematicFile = new File(schematicDir, arenaName + ".schem");
+
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only players can set arena and lobby areas.");
+            return true;
+        }
+        if(arenaManager.getArena(arenaName) == null){
+            sender.sendMessage("Arena doesn't exist");
+            return true;
+        }
+
+        if(arenaManager.Lobbyset.stream().noneMatch(item -> item.equalsIgnoreCase("miny set"))
+            || arenaManager.Lobbyset.stream().noneMatch(item -> item.equalsIgnoreCase("maxy set")))
+        {
+            sender.sendMessage("Y-levels not set");
+            return true;
+        }
+
+        if (!schematicFile.exists()) {
+            sender.sendMessage("schematic doesn't exist");
+            return true;
+        }
+
+        arenaManager.tryLogging(()-> arenaManager.setSpawnPoints(arenaName, sender),
+                            "Error when trying to create spawnpoints");
+
+        return true;
     }
 
     private boolean handleRestartCommand(CommandSender sender, String[] args) {
@@ -249,11 +294,12 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
 
     // Implementation for /Lava <name> arena and /Lava <name> lobby
     private boolean handleAreaCommand(CommandSender sender, String[] args) {
+        Player player = (Player) sender;
+
         if (!(sender instanceof Player)) {
             sender.sendMessage("Only players can set arena and lobby areas.");
             return true;
         }
-        Player player = (Player) sender;
 
         if (args.length < 3) {
             player.sendMessage("Usage: /lava <name> arena or lobby");
@@ -287,7 +333,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             case "arena":
                 arena.setArenaLocations(pos1 , pos2);
                 arenaManager.saveTheArena(arena);
-                worldeditAPI.saveRegionAsSchematic(player,arenaName);
+                worldeditAPI.saveArenaRegionAsSchematic(player,arenaName);
 
                 player.sendMessage(arenaName + " arena area set");
                 return true;
@@ -355,13 +401,24 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
 
     // Implementation for /Lava <name> join and /Lava <name> leave
     private boolean handleJoinLeaveCommand(CommandSender sender, String[] args) {
-        if (!(sender instanceof Player)) {
+
+        Player player = (Player) sender;
+        if (sender == null) {
             sender.sendMessage("Only a player can join or leave an arena.");
             return true;
         }
         if (args.length < 2) {
             sender.sendMessage("Usage: /lava <name> join or leave");
             return true;
+        }
+
+        switch (args[0]){
+            case "join":
+                arenaManager.addPlayerToArena(args[1], player);
+                arenaManager.teleportLobby(sender,args[1]);
+                break;
+            case "leave":
+                arenaManager.removePlayerFromArena(args[1], player);
         }
         // Logic for player joining or leaving an arena
         return true;
@@ -499,6 +556,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                     commands.add("set-area");
                     commands.add("miny");
                     commands.add("maxy");
+                    commands.add("createspawns");
                 }
                 break;
             case 5:

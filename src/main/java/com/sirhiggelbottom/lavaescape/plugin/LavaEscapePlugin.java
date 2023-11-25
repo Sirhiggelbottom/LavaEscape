@@ -1,6 +1,7 @@
 package com.sirhiggelbottom.lavaescape.plugin;
 
 import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
+import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.commands.LavaCommandExecutor;
 import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
@@ -13,8 +14,8 @@ public class LavaEscapePlugin extends JavaPlugin {
     private ConfigManager configManager;
     private ArenaManager arenaManager;
     private GameEvents gameEvents;
-
     private WorldeditAPI worldeditAPI;
+    private Arena arena;
 
 
     @Override
@@ -23,12 +24,14 @@ public class LavaEscapePlugin extends JavaPlugin {
         configManager = new ConfigManager(this);
 
         // Initialize ArenaManager
-        arenaManager = new ArenaManager(this, configManager,worldeditAPI);
+        arenaManager = new ArenaManager(this, configManager);
 
         gameEvents = new GameEvents(this);
         this.getServer().getPluginManager().registerEvents(gameEvents, this);
 
-        worldeditAPI = new WorldeditAPI(this, configManager , arenaManager);
+        worldeditAPI = new WorldeditAPI(this, arenaManager);
+
+
 
         // Initialize command executor and bind commands
         LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI);
