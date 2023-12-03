@@ -103,7 +103,7 @@ public class WorldeditAPI {
         }
 
 
-        try (ClipboardWriter writer = BuiltInClipboardFormat.SPONGE_SCHEMATIC.getWriter(new FileOutputStream(schematicFile))) {
+        try (ClipboardWriter writer = ClipboardFormats.findByAlias("sponge.3").getWriter(new FileOutputStream(schematicFile))) {
             writer.write(clipboard);
             player.sendMessage("Schematic saved as " + schematicFile.getName());
         } catch (IOException e) {
@@ -166,7 +166,8 @@ public class WorldeditAPI {
         }
 
 
-        try (ClipboardWriter writer = BuiltInClipboardFormat.SPONGE_SCHEMATIC.getWriter(new FileOutputStream(schematicFile))) {
+
+        try (ClipboardWriter writer = ClipboardFormats.findByAlias("sponge.3").getWriter(new FileOutputStream(schematicFile))) {
             writer.write(clipboard);
             player.sendMessage("Schematic saved as " + schematicFile.getName());
         } catch (IOException e) {
