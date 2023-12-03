@@ -166,7 +166,7 @@ public class WorldeditAPI {
         }
 
 
-        try (ClipboardWriter writer = BuiltInClipboardFormat.SPONGE_V3_SCHEMATIC.getWriter(new FileOutputStream(schematicFile))) {
+        try (ClipboardWriter writer = BuiltInClipboardFormat.SPONGE_SCHEMATIC.getWriter(new FileOutputStream(schematicFile))) {
             writer.write(clipboard);
             player.sendMessage("Schematic saved as " + schematicFile.getName());
         } catch (IOException e) {
@@ -236,8 +236,9 @@ public class WorldeditAPI {
     }
 
     public Clipboard loadLobbySchematic(String arenaName, CommandSender sender) {
-        File schematicDir = getDirectories();
+        File schematicDir = new File (plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
         File schematicFile = new File(schematicDir, arenaName + "_lobby" + ".schem");
+        sender.sendMessage("Trying to load: " + schematicFile);
 
         if (!schematicFile.exists()) {
             sender.sendMessage("schematic doesn't exist");
@@ -270,7 +271,7 @@ public class WorldeditAPI {
 
         Player player = (Player) sender;
         World world = BukkitAdapter.adapt(player.getWorld());
-        BlockVector3 point = findMinimumPoint(sender, arenaName);
+        BlockVector3 point = findArenaMinimumPoint(sender, arenaName);
 
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(world)) {
             Operation operation = new ClipboardHolder(clipboard)
@@ -286,7 +287,7 @@ public class WorldeditAPI {
         }
     }
 
-    private BlockVector3 findMinimumPoint(CommandSender sender,String arenaName){
+    private BlockVector3 findArenaMinimumPoint(CommandSender sender,String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
         Player player = (Player) sender;
 

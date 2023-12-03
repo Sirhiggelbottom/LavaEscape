@@ -152,7 +152,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         File schematicFile = new File(schematicDir, arenaName + ".schem");
 
         if (!(sender instanceof Player)) {
-            sender.sendMessage("Only players can set arena and lobby areas.");
+            sender.sendMessage("Only players can set arena spawnpoints.");
             return true;
         }
         if(arenaManager.getArena(arenaName) == null){
@@ -160,9 +160,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if(arenaManager.Lobbyset.stream().noneMatch(item -> item.equalsIgnoreCase("miny set"))
-            || arenaManager.Lobbyset.stream().noneMatch(item -> item.equalsIgnoreCase("maxy set")))
-        {
+        if(!arenaManager.checkYlevels(arenaName)){
             sender.sendMessage("Y-levels not set");
             return true;
         }
@@ -341,6 +339,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             case "lobby":
                 arena.setLobbyLocations(pos1 , pos2);
                 arenaManager.saveTheLobby(arena);
+                worldeditAPI.saveLobbyRegionAsSchematic(player,arenaName);
                 player.sendMessage(arenaName + " lobby area set");
                 return true;
 

@@ -10,6 +10,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -17,13 +18,13 @@ import org.bukkit.entity.Player;
 
 import java.util.*;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 public class ArenaManager {
     private final LavaEscapePlugin plugin;
     private final ConfigManager configManager;
     private final Map<String, Arena> arenaNames;
     private final WorldeditAPI worldeditAPI;
-    public List<String> Lobbyset;
     private List<Location> usedSpawns;
 
     public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager) {
@@ -32,7 +33,6 @@ public class ArenaManager {
         this.arenaNames = new HashMap<>();
         this.worldeditAPI = new WorldeditAPI(plugin, this);
         usedSpawns = new ArrayList<>();
-        Lobbyset = new ArrayList<>();
         loadArenas();
     }
 
@@ -115,13 +115,15 @@ public class ArenaManager {
         tryLogging(() -> configManager.getArenaConfig().set(basePath + ".name", arena.getName()),
                 "an error occurred while assigning a name to new arena in arena.yml");
 
-        // Setting placeholder values for the locations to "none"
+        // Setting placeholder values for the locations and Y-levels to "none"
         tryLogging(() ->{
             ConfigurationSection configurationSection = configManager.getArenaConfig();
             configurationSection.set(basePath + ".arena.pos1", "none");
             configurationSection.set(basePath + ".arena.pos2", "none");
             configurationSection.set(basePath + ".lobby.pos1", "none");
             configurationSection.set(basePath + ".lobby.pos2", "none");
+            configurationSection.set(basePath + ".Y-levels.Ymin","none");
+            configurationSection.set(basePath + ".Y-levels.Ymax","none");
         }, "an error occurred while assigning placeholder values to new arena in arena.yml");
 
         // Saving the arena config to arena.yml
@@ -241,10 +243,21 @@ public class ArenaManager {
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
 
-        configurationSection.set(basepath + ".Y-levels.Ymin", i);
-        configManager.saveArenaConfig();
-        player.sendMessage("Ymin-level set to Ylevel: " + i);
-        Lobbyset.add("miny set");
+        Clipboard clipboard = worldeditAPI.loadArenaSchematic(arena.getName(), (CommandSender) player);
+        CuboidRegion region = (CuboidRegion) clipboard.getRegion();
+        BlockVector3 point1 = region.getMinimumPoint();
+        int minY = point1.getY();
+
+        if(i < minY){
+            i = minY;
+            player.sendMessage("You have set the Ymin-level too low, Ymin has been set to: " + minY);
+            configurationSection.set(basepath + ".Y-levels.Ymin", i);
+            configManager.saveArenaConfig();
+        } else{
+            configurationSection.set(basepath + ".Y-levels.Ymin", i);
+            configManager.saveArenaConfig();
+            player.sendMessage("Ymin-level set to Ylevel: " + i);
+        }
         return true;
     }
 
@@ -255,20 +268,18 @@ public class ArenaManager {
         configurationSection.set(basepath + ".Y-levels.Ymax", i);
         configManager.saveArenaConfig();
         player.sendMessage("Ymax-level set to Ylevel: " + i);
-        Lobbyset.add("maxy set");
         return true;
     }
 
     public List<Location> findSpawnPoints(String arenaName, CommandSender sender) {
-        sender.sendMessage("Debug message: 1");
         Arena arena = getArena(arenaName);
-        sender.sendMessage("findSpawnPoints method is trying to find spawnpoints in arena: " + arena);
+
         if (!(sender instanceof Player)) {
             sender.sendMessage("This command can only be used by a player.");
             return null;
         }
 
-        sender.sendMessage("Debug message: 2");
+
 
         Player player = (Player) sender;
         World world = player.getWorld();
@@ -276,7 +287,7 @@ public class ArenaManager {
         String basePath = "arenas." + arena.getName();
         FileConfiguration config = configManager.getArenaConfig();
 
-        sender.sendMessage("Debug message: 3");
+
 
         int Ymax = config.getInt(basePath + ".Y-levels.Ymax");
         int Ymin = config.getInt(basePath + ".Y-levels.Ymin");
@@ -287,7 +298,7 @@ public class ArenaManager {
         Clipboard clipboard = worldeditAPI.loadArenaSchematic(arenaName, sender);
         CuboidRegion region = (CuboidRegion) clipboard.getRegion();
 
-        sender.sendMessage("Debug message: 4");
+
 
         // Adjust the volume for the Y-level range
         int height = Ymax - Ymin + 1;
@@ -296,50 +307,80 @@ public class ArenaManager {
         int searchSpaceVolume = length * width * height; // Adjusted volume for Y-range
 
         sender.sendMessage("Number of blocks to iterate through: " + searchSpaceVolume);
-        sender.sendMessage("Debug message: 5");
 
-        // Set maxAttempts based on the adjusted volume
-        int maxAttempts = searchSpaceVolume;
 
         // Ensure we have the region's minimum point to adjust coordinates
         BlockVector3 minPoint = region.getMinimumPoint();
 
-        int attempts = 0;
-        while (spawnPoints.size() < 150 && attempts < maxAttempts) {
-            // Randomly select a starting point within the region for each attempt
-            int x = minPoint.getX() + new Random().nextInt(length);
-            int y = Ymin + new Random().nextInt(height);
-            int z = minPoint.getZ() + new Random().nextInt(width);
+        List<Location> potentialSpawnPoints = new ArrayList<>();
+        List<Location> nonVailidSpawns = new ArrayList<>();
+        List<Location> notSolidground = new ArrayList<>();
+        List<Location> onTopOfTree = new ArrayList<>();
 
-            Block block = world.getBlockAt(x, y, z);
-            Block space1 = world.getBlockAt(x, y + 1, z);
-            Block space2 = world.getBlockAt(x, y + 2, z);
-            boolean space = space1.getType() == Material.AIR && space2.getType() == Material.AIR;
+        // Iterate through each block within the region
+        for (int x = minPoint.getBlockX(); x <= minPoint.getBlockX() + length; x++) {
+            for (int z = minPoint.getBlockZ(); z <= minPoint.getBlockZ() + width; z++) {
+                for (int y = Ymin; y <= Ymax; y++) {
+                    Block block = world.getBlockAt(x, y, z);
+                    Block space1 = world.getBlockAt(x, y + 1, z);
+                    Block space2 = world.getBlockAt(x, y + 2, z);
 
-            if (isValidSpawnPoint(block) && space) {
-                spawnPoints.add(block.getLocation());
+                    if (isValidSpawnPoint(block)) {
+                        potentialSpawnPoints.add(block.getLocation());
+                    } else {
+                        if (!isOnSolidGround(block)) {
+                            notSolidground.add(block.getLocation());
+                        } else if (isOnTopOfTree(block)) {
+                            onTopOfTree.add(block.getLocation());
+                        }
+                        nonVailidSpawns.add(block.getLocation());
+                    }
+                }
             }
-
-            attempts++;
         }
-        sender.sendMessage("Debug message: 6");
 
-        if (spawnPoints.size() < 150) {
-            sender.sendMessage("Unable to find 150 valid spawn points. Found only " + spawnPoints.size());
+
+        Collections.shuffle(potentialSpawnPoints); // Shuffle to randomize the spawn points
+
+        // Pick up to 150 random spawn points from the potential list or all if there are fewer than 150
+        List<Location> selectedSpawnPoints = potentialSpawnPoints.stream()
+                .limit(150)
+                .collect(Collectors.toList());
+
+        // Notify the user about the number of spawn points found
+        if (selectedSpawnPoints.isEmpty()) {
+            sender.sendMessage("Couldn't find any spawn points.");
+            sender.sendMessage("Non valid spawns found: " + nonVailidSpawns.size());
+            sender.sendMessage("Not solid spawns found: " + notSolidground.size());
+            sender.sendMessage("On top of trees spawns found: " + onTopOfTree.size());
+        } else if (selectedSpawnPoints.size() < 150) {
+            sender.sendMessage("Unable to find 150 valid spawn points. Found only " + selectedSpawnPoints.size());
+            sender.sendMessage("Non valid spawns found: " + nonVailidSpawns.size());
+            sender.sendMessage("Not solid spawns found: " + notSolidground.size());
+            sender.sendMessage("On top of trees spawns found: " + onTopOfTree.size());
+        } else {
+            sender.sendMessage("Found 150 spawn points.");
         }
-        sender.sendMessage("Debug message: 7");
-        return spawnPoints;
+
+        return selectedSpawnPoints;
     }
 
-    //ToDo Add logic to figure out if a block is a valid spawnpoint
-    private boolean isValidSpawnPoint(Block block) {
-        // Implement checks for solid ground, not on top of trees, not inside blocks, and enough space above
-        return isOnSolidGround(block) && !isOnTopOfTree(block) && !isInsideBlock(block);
+
+    private boolean isValidSpawnPoint(Block feetBlock) {
+        Block groundBlock = feetBlock.getRelative(BlockFace.DOWN);
+        Block headBlock = feetBlock.getRelative(BlockFace.UP);
+        Block aboveHeadBlock = headBlock.getRelative(BlockFace.UP);
+
+        // The block at the feet should be air, the ground should be solid, and there should be air at head and above head levels.
+        return feetBlock.getType() == Material.AIR && groundBlock.getType().isSolid()
+                && !isOnTopOfTree(groundBlock) && headBlock.getType() == Material.AIR
+                && aboveHeadBlock.getType() == Material.AIR;
     }
 
 
     private boolean isOnSolidGround(Block block) {
-        return block.getType().isSolid();
+        Block belowBlock = block.getRelative(BlockFace.DOWN);
+        return belowBlock.getType().isSolid();
     }
 
     private boolean isOnTopOfTree(Block block) {
@@ -347,11 +388,6 @@ public class ArenaManager {
         return type.toString().endsWith("_LOG") || type.toString().endsWith("_LEAVES");
     }
 
-    private boolean isInsideBlock(Block block) {
-        // Check if the block is not an air block
-        return block.getType() != Material.AIR; // Replace with actual logic
-
-    }
 
     public void randomArenaTeleport (Player player, List<Location> spawnPoints){
         List<Location> availableSpawns = spawnPoints.stream()
@@ -370,7 +406,7 @@ public class ArenaManager {
         player.teleport(randomSpawnpoint);
 
     }
-
+    //ToDo fix this method, players are not being teleported to center of lobby.
     public void teleportLobby(CommandSender sender, String arenaName) {
         if (!(sender instanceof Player)) {
             sender.sendMessage("This command can only be used by a player.");
@@ -392,7 +428,6 @@ public class ArenaManager {
             return;
         }
 
-        // Assuming you have a method to get the region from the clipboard
         CuboidRegion region = (CuboidRegion) clipboard.getRegion();
         BlockVector3 center = region.getCenter().toBlockPoint();
         BlockVector3 offset = region.getMinimumPoint();
@@ -405,7 +440,18 @@ public class ArenaManager {
         sender.sendMessage("Teleported to the lobby.");
     }
 
+    public boolean checkYlevels(String arenaName){
+        Arena arena = getArena(arenaName);
+        String basepath = "arenas." + arena.getName();
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        Object objectminY = configurationSection.get(basepath + ".Y-levels.Ymin");
+        Object objectmaxY = configurationSection.get(basepath + ".Y-levels.Ymax");
 
+        if(objectminY instanceof String || objectmaxY instanceof String){
+            return false;
+        } else return objectminY instanceof Integer && objectmaxY instanceof Integer;
+
+    }
 
 }
 
