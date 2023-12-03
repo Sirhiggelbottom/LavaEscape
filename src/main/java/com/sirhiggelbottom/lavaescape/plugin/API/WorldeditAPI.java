@@ -94,7 +94,7 @@ public class WorldeditAPI {
         ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
                 world, region, clipboard, region.getMinimumPoint()
         );
-        // configure here
+
         try {
             Operations.complete(forwardExtentCopy);
         }catch (Exception e){
@@ -173,7 +173,6 @@ public class WorldeditAPI {
             player.sendMessage("Error saving schematic: " + e.getMessage());
             e.printStackTrace();
         }
-
     }
 
     private File getDirectories() {

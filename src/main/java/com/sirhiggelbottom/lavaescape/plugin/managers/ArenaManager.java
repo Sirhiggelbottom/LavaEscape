@@ -433,8 +433,8 @@ public class ArenaManager {
         BlockVector3 offset = region.getMinimumPoint();
 
         // Find the highest non-air block at the center
-        int highestY = world.getHighestBlockYAt(center.getX() + offset.getBlockX(), center.getZ() + offset.getBlockZ());
-        Location teleportLocation = new Location(world, center.getX() + offset.getBlockX() + 0.5, highestY, center.getZ() + offset.getBlockZ() + 0.5);
+        int highestY = world.getHighestBlockYAt(center.getX(), center.getZ());
+        Location teleportLocation = new Location(world, center.getX(), highestY + 1, center.getZ());
 
         player.teleport(teleportLocation);
         sender.sendMessage("Teleported to the lobby.");
