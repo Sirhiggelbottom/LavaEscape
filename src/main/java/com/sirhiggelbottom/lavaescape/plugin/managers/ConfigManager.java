@@ -89,16 +89,7 @@ public class ConfigManager {
         }
     }
 
-    // Example: Set minimum players for an arena
-    public void setMinPlayers(String arenaName, int minPlayers) {
-        arenaConfig.set(arenaName + ".minPlayers", minPlayers);
-        saveArenaConfig();
-    }
 
-    // Example: Get minimum players for an arena
-    public int getMinPlayers(String arenaName) {
-        return arenaConfig.getInt(arenaName + ".minPlayers", 2); // Default to 2
-    }
 
     // Similar methods for other settings like maxPlayers, arena/lobby positions, etc.
 

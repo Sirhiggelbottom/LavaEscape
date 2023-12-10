@@ -10,7 +10,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class LavaEscapePlugin extends JavaPlugin {
 
-//    private GameManager gameManager;
+//    private GameManager GameManager;
     private ConfigManager configManager;
     private ArenaManager arenaManager;
     private GameEvents gameEvents;

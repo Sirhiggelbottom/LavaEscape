@@ -549,6 +549,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             case 4:
 //                sender.sendMessage("Admin list debug message: argLength case 4 started");
                 if(args[2].equalsIgnoreCase("config")){
+
                     commands.add("minplayers");
                     commands.add("maxplayers");
                     commands.add("mode");
@@ -556,6 +557,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                     commands.add("miny");
                     commands.add("maxy");
                     commands.add("createspawns");
+
                 }
                 break;
             case 5:

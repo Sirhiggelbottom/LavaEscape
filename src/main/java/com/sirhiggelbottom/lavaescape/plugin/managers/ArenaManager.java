@@ -94,15 +94,6 @@ public class ArenaManager {
         configManager.saveArenaConfig();
     }
 
-    public void saveArena(Arena arena) {
-        String basePath = "arenas." + arena.getName();
-        saveLocationToConfig(basePath + ".arena.pos1", arena.getArenaLoc1());
-        saveLocationToConfig(basePath + ".arena.pos2", arena.getArenaLoc2());
-        saveLocationToConfig(basePath + ".lobby.pos1", arena.getLobbyLoc1());
-        saveLocationToConfig(basePath + ".lobby.pos2", arena.getLobbyLoc2());
-        configManager.saveArenaConfig();
-    }
-
     public void saveNewArena(Arena arena){
         // Setting arena path in arena.yml file
         String basePath = "arenas." + arena.getName();
@@ -124,6 +115,11 @@ public class ArenaManager {
             configurationSection.set(basePath + ".lobby.pos2", "none");
             configurationSection.set(basePath + ".Y-levels.Ymin","none");
             configurationSection.set(basePath + ".Y-levels.Ymax","none");
+
+            // Set min and max players to default values
+            configurationSection.set(basePath + ".minPlayers", 2);
+            configurationSection.set(basePath + ".maxPlayers", 10);
+
         }, "an error occurred while assigning placeholder values to new arena in arena.yml");
 
         // Saving the arena config to arena.yml
@@ -194,6 +190,37 @@ public class ArenaManager {
         return new HashSet<>();
     }
 
+    // Set minimum players for an arena
+    public void setMinPlayers(String arenaName, int minPlayers) {
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName();
+        configManager.getArenaConfig().set(basePath + ".minPlayers", minPlayers);
+        configManager.saveArenaConfig();
+    }
+
+    // Get minimum players for an arena
+    public int getMinPlayers(String arenaName) {
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName();
+        return configManager.getArenaConfig().getInt(basePath + ".minPlayers", 2); // Default to 2
+    }
+
+    public void setMaxPlayers(String arenaName, int minPlayers) {
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName();
+        configManager.getArenaConfig().set(basePath + ".maxPlayers", minPlayers);
+        configManager.saveArenaConfig();
+    }
+
+    // Get minimum players for an arena
+    public int getMaxPlayers(String arenaName) {
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName();
+        return configManager.getArenaConfig().getInt(basePath + ".maxPlayers", 10); // Default to 10
+    }
+
+
+
     public enum GameState {
         WAITING,
         STARTING,
@@ -223,9 +250,9 @@ public class ArenaManager {
         tryLogging(() -> configManager.getSpawnPointConfig().createSection(basePath),
                 "an error occurred while creating a new section in spawnPoint.yml");
 
-        // Sets the arena name
+        /*// Sets the arena name
         tryLogging(() -> configManager.getSpawnPointConfig().set(basePath + ".name", arena.getName()),
-                "an error occurred while assigning a name to new arena in spawnPoint.yml");
+                "an error occurred while assigning a name to new arena in spawnPoint.yml");*/
 
         int index = 1;
         for(Location loc : spawnPoints){
@@ -237,6 +264,23 @@ public class ArenaManager {
         }
         configManager.saveSpawnPointConfig();
         
+    }
+
+    public boolean  areSpawnpointsSet(String arenaName){
+        int numberOfSpawnpoints = 0;
+        ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas." + arenaName);
+        if(arenaSection != null){
+            for(String key : arenaSection.getKeys(false)){
+                if(key.startsWith("SP")){
+                    numberOfSpawnpoints++;
+
+                }
+            }
+        }
+        if(numberOfSpawnpoints < 150){
+            plugin.getLogger().log(Level.WARNING, "Not enough spawnpoints found");
+            return false;
+        } else return true;
     }
 
     public boolean setMinYLevel(Arena arena, int i, Player player){
@@ -291,8 +335,6 @@ public class ArenaManager {
 
         int Ymax = config.getInt(basePath + ".Y-levels.Ymax");
         int Ymin = config.getInt(basePath + ".Y-levels.Ymin");
-
-        List<Location> spawnPoints = new ArrayList<>();
 
         // Load the schematic and calculate the volume
         Clipboard clipboard = worldeditAPI.loadArenaSchematic(arenaName, sender);
@@ -406,7 +448,7 @@ public class ArenaManager {
         player.teleport(randomSpawnpoint);
 
     }
-    //ToDo fix this method, players are not being teleported to center of lobby.
+
     public void teleportLobby(CommandSender sender, String arenaName) {
         if (!(sender instanceof Player)) {
             sender.sendMessage("This command can only be used by a player.");
@@ -430,7 +472,6 @@ public class ArenaManager {
 
         CuboidRegion region = (CuboidRegion) clipboard.getRegion();
         BlockVector3 center = region.getCenter().toBlockPoint();
-        BlockVector3 offset = region.getMinimumPoint();
 
         // Find the highest non-air block at the center
         int highestY = world.getHighestBlockYAt(center.getX(), center.getZ());

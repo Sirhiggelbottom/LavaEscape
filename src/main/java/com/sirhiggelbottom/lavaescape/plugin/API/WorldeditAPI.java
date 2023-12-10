@@ -210,6 +210,22 @@ public class WorldeditAPI {
 
     }
 
+    public boolean doesArenaSchematicExist(String arenaName){
+        File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
+        File schematicFile = new File(schematicDir, arenaName + ".schem");
+
+
+        return schematicFile.exists();
+
+    }
+
+    public boolean doesLobbySchematicExist(String arenaName){
+        File schematicDir = new File (plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
+        File schematicFile = new File(schematicDir, arenaName + "_lobby" + ".schem");
+
+        return schematicFile.exists();
+
+    }
 
     public Clipboard loadArenaSchematic(String arenaName, CommandSender sender) {
         File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
