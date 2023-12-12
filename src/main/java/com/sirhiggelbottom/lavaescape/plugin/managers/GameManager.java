@@ -18,7 +18,15 @@ package com.sirhiggelbottom.lavaescape.plugin.managers;
 
 import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
+import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.world.World;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.scheduler.BukkitScheduler;
 
 public class GameManager {
 
@@ -26,10 +34,14 @@ public class GameManager {
     private final ConfigManager configManager;
     private final WorldeditAPI worldeditAPI;
 
-    public GameManager(ArenaManager arenaManager, ConfigManager configManager, WorldeditAPI worldeditAPI) {
+    private final LavaEscapePlugin plugin;
+
+
+    public GameManager(ArenaManager arenaManager, ConfigManager configManager, WorldeditAPI worldeditAPI, LavaEscapePlugin plugin) {
         this.arenaManager = arenaManager;
         this.configManager = configManager;
         this.worldeditAPI = worldeditAPI;
+        this.plugin = plugin;
     }
 
     public void isArenaReady(String arenaName){
@@ -41,138 +53,94 @@ public class GameManager {
 
         }
 
-    } cx
-
-    /*
-
-    GameState currentState;
-    List<Player> playersInArena;
-    Arena currentArena;
-    Configuration arenaConfig;
-    Configuration gameConfig;
-    int minPlayers;
-    int maxPlayers;
-
-    // Constructor to initialize the GameManager
-    GameManager() {
-        currentState = GameState.WAITING;
-        playersInArena = new ArrayList<>();
-        alivePlayers = new ArrayList<>();
-        loadConfigurations();
     }
 
-    // Load configurations from .yml files
-    void loadConfigurations() {
-        arenaConfig = loadYML("Arena.yml");
-        gameConfig = loadYML("config.yml");
-        minPlayers = gameConfig.getInt("minPlayers");
-        maxPlayers = gameConfig.getInt("maxPlayers");
-    }
 
-    // Method to add a player to the arena
-    void addPlayerToArena(Player player) {
-        if (playersInArena.size() < maxPlayers) {
-            playersInArena.add(player);
-            player.teleport(currentArena.getLobbyLocation());
-            checkIfGameCanStart();
-        } else {
-            player.sendMessage("Arena is full.");
+    public void isGameReady(String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
+
+        int minPlayers = arenaManager.getMinPlayers(arenaName);
+        if (arena.getPlayers().size() >= minPlayers){
+            arenaManager.randomArenaTeleport(arenaName,arenaManager.getSpawnPoints(arenaName));
+            plugin.setShouldContinueFilling(true);
+            lavaTask(arenaName);
+        }else {
+            Bukkit.broadcastMessage("Waiting for more players to start game");
+            plugin.setShouldContinueFilling(false);
         }
+
     }
 
-    // Check if the arena is ready for use
-    boolean checkArenaReadiness() {
-        return currentArena.isReady();
+    public void lavaTask(String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
+        String basePath = "arenas." + arena.getName();
+
+        int Ymax = worldeditAPI.findArenaMaximumPointNonDebug(arenaName).getY();
+
+
+        BukkitScheduler scheduler = plugin.getServer().getScheduler();
+        scheduler.scheduleSyncRepeatingTask(plugin, new Runnable() {
+            int currentY = worldeditAPI.findArenaMinimumPointNonDebug(arenaName).getY();
+
+            @Override
+            public void run() {
+                int maxY = Ymax;
+                Bukkit.broadcastMessage("Max lava level is: " + maxY);
+                if(!plugin.shouldContinueFilling() || currentY >= maxY){
+                    Bukkit.broadcastMessage("Lava is no longer rising.");
+                    scheduler.cancelTasks(plugin);
+                }
+                fillLava(arenaName, currentY);
+                Bukkit.broadcastMessage("Y-level: " + currentY + " is being filled with lava");
+                currentY++;
+            }
+        }, 0L,20L * configManager.getArenaConfig().getInt(basePath + ".lavadelay"));
     }
 
-    // Check if the prerequisites for game start are okay
-    void checkIfGameCanStart() {
-        if (currentState == GameState.WAITING && playersInArena.size() >= minPlayers) {
-            currentState = GameState.STARTING;
-            startGame();
-        }
-    }
+    public void fillLava(String arenaName, int y){
+        Arena arena = arenaManager.getArena(arenaName);
+        String basePath = "." + arena.getName();
+        ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
 
-    // Handle the start of the game
-    void startGame() {
-        if (!checkArenaReadiness()) {
-            broadcastMessage("Arena is not ready yet.");
+
+        int maxY = arenaSection.getInt(basePath + ".Y-levels.Ymax");
+
+        String worldName = arenaSection.getString(basePath + ".worldName");
+
+        if(worldName == null){
+            Bukkit.broadcastMessage("This worldName doesn't exist.");
             return;
         }
 
-        alivePlayers = new ArrayList<>(playersInArena); // Clone the list
-        broadcastMessage("Game is starting!");
-        currentState = GameState.GRACE;
-        teleportPlayersToArena();
-        startGracePeriod();
-    }
+        org.bukkit.World bukkitWorld = Bukkit.getWorld(worldName);
 
-    // Teleport players to random locations inside of the arena
-    void teleportPlayersToArena() {
-        for (Player player : playersInArena) {
-            Location spawnLocation = currentArena.getRandomSpawnLocation();
-            player.teleport(spawnLocation);
+        if(bukkitWorld == null){
+            return;
         }
-    }
 
-    // Start the grace period countdown
-    void startGracePeriod() {
-        int graceTime = gameConfig.getInt("graceTime");
-        // Start a timer for graceTime seconds
-        // After the timer ends, call startLavaPhase()
-    }
+        World world = BukkitAdapter.adapt(bukkitWorld);
 
-    // Start the lava phase
-    void startLavaPhase() {
-        currentState = GameState.LAVA;
-        // Logic to start rising lava and enable PvP
-    }
+        BlockVector3 minPoint = worldeditAPI.findArenaMinimumPointNonDebug(arenaName);
+        BlockVector3 maxPoint = worldeditAPI.findArenaMaximumPointNonDebug(arenaName);
 
-    // Handle player death
-    void handlePlayerDeath(Player player) {
-        alivePlayers.remove(player);
-        player.teleport(currentArena.getLobbyLocation());
-        checkForGameEnd();
-    }
+        int minX = minPoint.getX();
+        int maxX = maxPoint.getX();
+        int minZ = minPoint.getZ();
+        int maxZ = maxPoint.getZ();
 
-    // Check if the game should end
-    void checkForGameEnd() {
-        if (alivePlayers.size() == 1) {
-            Player winner = alivePlayers.get(0);
-            broadcastMessage(winner.getName() + " is the winner!");
-            endGame();
+        org.bukkit.World buWorld = BukkitAdapter.adapt(world);
+
+        for (int x = minX; x <= maxX; x++){
+            for (int z = minZ; z <= maxZ; z++){
+
+                Block block = buWorld.getBlockAt(x,y,z);
+                if(block.getType() == Material.AIR){
+                    block.setType(Material.LAVA);
+
+                }
+            }
         }
-    }
 
-    // End the game and reset the arena
-    void endGame() {
-        currentState = GameState.END;
-        currentArena.reset();
-        playersInArena.clear();
-        alivePlayers.clear();
-        currentState = GameState.WAITING;
     }
-
-    // Start the deathmatch phase
-    void startDeathmatch() {
-        currentState = GameState.DEATHMATCH;
-        // Stop lava rising
-        // Focus on PvP
-    }
-
-    // Broadcast a message to all players in the game
-    void broadcastMessage(String message) {
-        for (Player player : playersInArena) {
-            player.sendMessage(message);
-        }
-    }
-
-    // Logic for when a player wants to leave the game
-    void playerLeave(Player player) {
-        playersInArena.remove(player);
-        alivePlayers.remove(player);
-        player.teleport(currentArena.getLobbyLocation());
-        // Adjust alive player count and check game state
-    }*/
 }
 

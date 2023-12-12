@@ -6,6 +6,7 @@ import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
+import com.sirhiggelbottom.lavaescape.plugin.managers.GameManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -30,13 +31,16 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private final GameEvents gameEvents;
     private final WorldeditAPI worldeditAPI;
 
+    private final GameManager gameManager;
 
-    public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager, WorldeditAPI worldeditAPI) {
+
+    public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager, WorldeditAPI worldeditAPI, GameManager gameManager) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.configManager = configManager;
         this.gameEvents = gameEvents;
         this.worldeditAPI = worldeditAPI;
+        this.gameManager = gameManager;
     }
 
     @Override
@@ -69,6 +73,9 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase()) {
             case "arena":
                 switch(args[2].toLowerCase()){
+                    case "setworld":
+                        String arg = args[1];
+                        return handleSetWorldCommand(sender, arg);
                     case "start":
                     case "stop":
                         return handleGameControlCommand(sender, args);
@@ -105,6 +112,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                                     default:
                                         break;
                                 }
+                            case "setlavadelay":
+                                return handleSetLavaDelay(sender, args);
 
 
                             case "set-area":
@@ -140,6 +149,34 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             default:
                 return false;
         }return true;
+    }
+
+    private boolean handleSetLavaDelay(CommandSender sender, String[] args) {
+
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only players can set arena spawnpoints.");
+            return true;
+        }
+
+        String arenaName = args[1];
+        int seconds = argToInt(sender, args[4]);
+
+        arenaManager.setLavaDelay(arenaName, seconds);
+        return true;
+    }
+
+    private boolean handleSetWorldCommand(CommandSender sender, String arenaName) {
+
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only players can set arena spawnpoints.");
+            return true;
+        }
+
+        Player player = (Player) sender;
+        org.bukkit.World world = player.getWorld();
+        arenaManager.setWorld(arenaName, world);
+
+        return true;
     }
 
     private boolean handleSpawnCreation(CommandSender sender, String[] args) {
@@ -263,8 +300,10 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage("This was an error message from the create command.");
             return true;
         }
+        Player player = (Player) sender;
+        org.bukkit.World world = player.getWorld();
         sender.sendMessage("trying to create arena");
-        arenaManager.createArena(arenaName);
+        arenaManager.createArena(arenaName, world);
         configManager.worldEditDIR();
         sender.sendMessage("Arena '" + arenaName + "' has been created.");
         return true;
@@ -383,6 +422,18 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage("Usage: /lava <name> start or stop");
             return true;
         }
+
+        String arenaName = args[1];
+
+        if(args[2].equalsIgnoreCase("start")){
+            plugin.setShouldContinueFilling(true);
+            gameManager.lavaTask(arenaName);
+            sender.sendMessage("The lava is rising");
+        } else if (args[2].equalsIgnoreCase("stop")) {
+            plugin.setShouldContinueFilling(false);
+            sender.sendMessage("The lava has stopped rising");
+        }
+
         // Logic to control game start and stop
         return true;
     }
@@ -415,9 +466,11 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             case "join":
                 arenaManager.addPlayerToArena(args[1], player);
                 arenaManager.teleportLobby(sender,args[1]);
+                gameManager.isGameReady(args[1]);
                 break;
             case "leave":
                 arenaManager.removePlayerFromArena(args[1], player);
+                gameManager.isGameReady(args[1]);
         }
         // Logic for player joining or leaving an arena
         return true;
@@ -542,6 +595,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                         commands.add("delete");
                         commands.add("restart");
                         commands.add("config");
+                        commands.add("setworld");
 
                 }
                 break;
@@ -557,6 +611,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                     commands.add("miny");
                     commands.add("maxy");
                     commands.add("createspawns");
+                    commands.add("setlavadelay");
 
                 }
                 break;

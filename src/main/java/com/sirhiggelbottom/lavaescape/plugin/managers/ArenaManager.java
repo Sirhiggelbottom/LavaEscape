@@ -6,6 +6,7 @@ import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.regions.CuboidRegion;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -27,11 +28,14 @@ public class ArenaManager {
     private final WorldeditAPI worldeditAPI;
     private List<Location> usedSpawns;
 
-    public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager) {
+    private final Arena arena;
+
+    public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager, Arena arena) {
         this.plugin = plugin;
         this.configManager = configManager;
+        this.arena = arena;
         this.arenaNames = new HashMap<>();
-        this.worldeditAPI = new WorldeditAPI(plugin, this);
+        this.worldeditAPI = new WorldeditAPI(plugin, this, configManager);
         usedSpawns = new ArrayList<>();
         loadArenas();
     }
@@ -70,14 +74,15 @@ public class ArenaManager {
     }
 
 
-    public void createArena(String arenaName) {
+    public void createArena(String arenaName, World world) {
 
         if(arenaNames.containsKey(arenaName)){
             return;
         }
         Arena arena = new Arena(arenaName, null, null, null, null);
         arenaNames.put(arenaName, arena);
-        saveNewArena(arena);
+        String worldName = world.getName();
+        saveNewArena(arena, worldName);
     }
 
     public void saveTheArena(Arena arena){
@@ -94,7 +99,7 @@ public class ArenaManager {
         configManager.saveArenaConfig();
     }
 
-    public void saveNewArena(Arena arena){
+    public void saveNewArena(Arena arena, String worldName){
         // Setting arena path in arena.yml file
         String basePath = "arenas." + arena.getName();
 
@@ -119,6 +124,11 @@ public class ArenaManager {
             // Set min and max players to default values
             configurationSection.set(basePath + ".minPlayers", 2);
             configurationSection.set(basePath + ".maxPlayers", 10);
+
+            // Set the World name
+            configurationSection.set(basePath + ".worldName", worldName);
+            // Set the lavadelay to default 5 seconds.
+            configurationSection.set(basePath + ".lavadelay", 5);
 
         }, "an error occurred while assigning placeholder values to new arena in arena.yml");
 
@@ -283,6 +293,44 @@ public class ArenaManager {
         } else return true;
     }
 
+    public List<Location> getSpawnPoints(String arenaName) {
+        FileConfiguration spawnPointConfig = configManager.getSpawnPointConfig();
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+        String basePath = "arenas." + arenaName;
+        ConfigurationSection spawnSection = spawnPointConfig.getConfigurationSection(basePath);
+        ConfigurationSection arenaSection = arenaConfig.getConfigurationSection(basePath);
+        assert arenaSection != null;
+        String worldName = arenaSection.getString( basePath + ".worldName");
+        Bukkit.broadcastMessage("Worldname is: " + worldName);
+
+
+        if(worldName == null){
+            Bukkit.broadcastMessage("This worldName doesn't exist.");
+            return null;
+        }
+
+        org.bukkit.World bukkitWorld = Bukkit.getWorld(worldName);
+
+        if(bukkitWorld == null){
+            return null;
+        }
+
+        List<Location> spawnPoints = new ArrayList<>();
+        Set<String> keys = spawnSection.getKeys(false);
+        for (String key : keys) {
+            if (key.startsWith("SP")) {
+                ConfigurationSection spawnsSection = spawnSection.getConfigurationSection(key);
+                double x = spawnsSection.getDouble("x");
+                double y = spawnsSection.getDouble("y");
+                double z = spawnsSection.getDouble("z");
+                // Assuming the world of the spawn points is known or can be retrieved
+                Location loc = new Location(Bukkit.getWorld(worldName), x, y, z);
+                spawnPoints.add(loc);
+            }
+        }
+        return spawnPoints;
+    }
+
     public boolean setMinYLevel(Arena arena, int i, Player player){
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
@@ -431,21 +479,28 @@ public class ArenaManager {
     }
 
 
-    public void randomArenaTeleport (Player player, List<Location> spawnPoints){
+    public void randomArenaTeleport (String arenaName, List<Location> spawnPoints){
+
+        Set<Player> players = arena.getPlayers();
         List<Location> availableSpawns = spawnPoints.stream()
                 .filter(spawn -> !usedSpawns.contains(spawn))
                 .toList();
         if (availableSpawns.isEmpty()) {
-            player.sendMessage("No available spawn points.");
+            Bukkit.broadcastMessage("No available spawn points.");
             return;
         }
 
         Random random = new Random();
-        int randomIndex = random.nextInt(availableSpawns.size());
-        Location randomSpawnpoint = availableSpawns.get(randomIndex);
 
-        usedSpawns.add(randomSpawnpoint);
-        player.teleport(randomSpawnpoint);
+        for(Player player : players){
+
+            int randomIndex = random.nextInt(availableSpawns.size());
+            Location randomSpawnpoint = availableSpawns.get(randomIndex);
+
+            player.teleport(randomSpawnpoint);
+            usedSpawns.add(randomSpawnpoint);
+
+        }
 
     }
 
@@ -492,6 +547,31 @@ public class ArenaManager {
             return false;
         } else return objectminY instanceof Integer && objectmaxY instanceof Integer;
 
+    }
+
+    public void setWorld(String arenaName, World world){
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName();
+        String worldName = world.getName();
+
+
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        configurationSection.set(basePath + ".worldName", worldName);
+
+        Bukkit.broadcastMessage("Saving worldname as: " + worldName);
+
+        configManager.saveArenaConfig();
+
+    }
+
+    public void setLavaDelay (String arenaName, int seconds){
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName();
+
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        configurationSection.set(basePath + ".lavadelay", seconds);
+
+        configManager.saveArenaConfig();
     }
 
 }

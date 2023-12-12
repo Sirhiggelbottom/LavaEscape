@@ -1,8 +1,11 @@
 package com.sirhiggelbottom.lavaescape.plugin.API;
 
+
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
+import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
+
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
@@ -20,6 +23,7 @@ import com.sk89q.worldedit.world.World;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
 import java.io.File;
@@ -32,10 +36,13 @@ public class WorldeditAPI {
     private final LavaEscapePlugin plugin;
     private final ArenaManager arenaManager;
 
+    private final ConfigManager configManager;
 
-    public WorldeditAPI(LavaEscapePlugin plugin, ArenaManager arenaManager){
+
+    public WorldeditAPI(LavaEscapePlugin plugin, ArenaManager arenaManager, ConfigManager configManager){
         this.plugin = plugin;
         this.arenaManager = arenaManager;
+        this.configManager = configManager;
     }
     public void saveArenaRegionAsSchematic(Player player, String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
@@ -293,7 +300,7 @@ public class WorldeditAPI {
             Operation operation = new ClipboardHolder(clipboard)
                     .createPaste(editSession)
                     .to(point)
-                    .ignoreAirBlocks(true) // Include this if you want to paste air blocks as well
+                    .ignoreAirBlocks(false) // Include this if you want to paste air blocks as well
                     .build();
             Operations.complete(operation);
             sender.sendMessage("Schematic: " + schematicFile + " successfully pasted at: " + point.getX() + " " + point.getY() + " " + point.getZ());
@@ -306,17 +313,95 @@ public class WorldeditAPI {
     private BlockVector3 findArenaMinimumPoint(CommandSender sender,String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
         Player player = (Player) sender;
-
-        Location pos1 = arena.getArenaLoc1();
-        Location pos2 = arena.getArenaLoc2();
-
         World world = BukkitAdapter.adapt(player.getWorld());
-        BlockVector3 point1 = BlockVector3.at(pos1.getX(), pos1.getY(), pos1.getZ());
-        BlockVector3 point2 = BlockVector3.at(pos2.getX(), pos2.getY(), pos2.getZ());
+        String basePath = "." + arena.getName();
+        ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
+
+        int pos1X = arenaSection.getInt(basePath + ".arena.pos1.x");
+        int pos1Y = arenaSection.getInt(basePath + ".arena.pos1.y");
+        int pos1Z = arenaSection.getInt(basePath + ".arena.pos1.z");
+
+        int pos2X = arenaSection.getInt(basePath + ".arena.pos2.x");
+        int pos2Y = arenaSection.getInt(basePath + ".arena.pos2.y");
+        int pos2Z = arenaSection.getInt(basePath + ".arena.pos2.z");
+
+        BlockVector3 point1 = BlockVector3.at(pos1X, pos1Y, pos1Z);
+        BlockVector3 point2 = BlockVector3.at(pos2X, pos2Y, pos2Z);
 
         CuboidRegion region = new CuboidRegion(world, point1, point2);
 
         return region.getMinimumPoint();
+    }
+
+    public BlockVector3 findArenaMinimumPointNonDebug(String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
+        String basePath = "." + arena.getName();
+        ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
+
+        String worldName = arenaSection.getString(basePath + ".worldName");
+
+        if(worldName == null){
+            Bukkit.broadcastMessage("This worldName doesn't exist.");
+            return null;
+        }
+
+        org.bukkit.World bukkitWorld = Bukkit.getWorld(worldName);
+
+        if(bukkitWorld == null){
+            return null;
+        }
+
+        World world = BukkitAdapter.adapt(bukkitWorld);
+
+        int pos1X = arenaSection.getInt(basePath + ".arena.pos1.x");
+        int pos1Y = arenaSection.getInt(basePath + ".arena.pos1.y");
+        int pos1Z = arenaSection.getInt(basePath + ".arena.pos1.z");
+
+        int pos2X = arenaSection.getInt(basePath + ".arena.pos2.x");
+        int pos2Y = arenaSection.getInt(basePath + ".arena.pos2.y");
+        int pos2Z = arenaSection.getInt(basePath + ".arena.pos2.z");
+
+        BlockVector3 point1 = BlockVector3.at(pos1X, pos1Y, pos1Z);
+        BlockVector3 point2 = BlockVector3.at(pos2X, pos2Y, pos2Z);
+
+        CuboidRegion region = new CuboidRegion(world, point1, point2);
+
+        return region.getMinimumPoint();
+    }
+    public BlockVector3 findArenaMaximumPointNonDebug(String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
+        String basePath = "." + arena.getName();
+        ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
+
+        String worldName = arenaSection.getString(basePath + ".worldName");
+
+        if(worldName == null){
+            Bukkit.broadcastMessage("This worldName doesn't exist.");
+            return null;
+        }
+
+        org.bukkit.World bukkitWorld = Bukkit.getWorld(worldName);
+
+        if(bukkitWorld == null){
+            return null;
+        }
+
+        World world = BukkitAdapter.adapt(bukkitWorld);
+
+        int pos1X = arenaSection.getInt(basePath + ".arena.pos1.x");
+        int pos1Y = arenaSection.getInt(basePath + ".arena.pos1.y");
+        int pos1Z = arenaSection.getInt(basePath + ".arena.pos1.z");
+
+        int pos2X = arenaSection.getInt(basePath + ".arena.pos2.x");
+        int pos2Y = arenaSection.getInt(basePath + ".arena.pos2.y");
+        int pos2Z = arenaSection.getInt(basePath + ".arena.pos2.z");
+
+        BlockVector3 point1 = BlockVector3.at(pos1X, pos1Y, pos1Z);
+        BlockVector3 point2 = BlockVector3.at(pos2X, pos2Y, pos2Z);
+
+        CuboidRegion region = new CuboidRegion(world, point1, point2);
+
+        return region.getMaximumPoint();
     }
 
 }

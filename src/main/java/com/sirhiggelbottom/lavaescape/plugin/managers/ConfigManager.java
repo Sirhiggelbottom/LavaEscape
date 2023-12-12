@@ -149,6 +149,10 @@ public class ConfigManager {
         return spawnPointConfig;
     }
 
+    public FileConfiguration getConfig(){
+        return config;
+    }
+
     public void worldEditDIR(){
         File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics");
         if (!schematicDir.exists()) {

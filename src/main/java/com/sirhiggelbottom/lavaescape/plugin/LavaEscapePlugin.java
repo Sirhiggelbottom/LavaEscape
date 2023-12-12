@@ -6,6 +6,7 @@ import com.sirhiggelbottom.lavaescape.plugin.commands.LavaCommandExecutor;
 import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
+import com.sirhiggelbottom.lavaescape.plugin.managers.GameManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class LavaEscapePlugin extends JavaPlugin {
@@ -17,6 +18,10 @@ public class LavaEscapePlugin extends JavaPlugin {
     private WorldeditAPI worldeditAPI;
     private Arena arena;
 
+    private GameManager gameManager;
+
+    private boolean shouldContinueFilling = false;
+
 
     @Override
     public void onEnable() {
@@ -24,17 +29,19 @@ public class LavaEscapePlugin extends JavaPlugin {
         configManager = new ConfigManager(this);
 
         // Initialize ArenaManager
-        arenaManager = new ArenaManager(this, configManager);
+        arenaManager = new ArenaManager(this, configManager, arena);
 
         gameEvents = new GameEvents(this);
         this.getServer().getPluginManager().registerEvents(gameEvents, this);
 
-        worldeditAPI = new WorldeditAPI(this, arenaManager);
+        worldeditAPI = new WorldeditAPI(this, arenaManager, configManager);
+
+        gameManager = new GameManager(arenaManager,configManager,worldeditAPI,this);
 
 
 
         // Initialize command executor and bind commands
-        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI);
+        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI, gameManager);
 
         getCommand("lava").setExecutor(commandExecutor);
 
@@ -57,6 +64,14 @@ public class LavaEscapePlugin extends JavaPlugin {
 
     public ArenaManager getArenaManager() {
         return arenaManager;
+    }
+
+    public boolean shouldContinueFilling() {
+        return shouldContinueFilling;
+    }
+
+    public void setShouldContinueFilling(boolean shouldContinueFilling) {
+        this.shouldContinueFilling = shouldContinueFilling;
     }
 
 }
