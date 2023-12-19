@@ -1,7 +1,7 @@
 package com.sirhiggelbottom.lavaescape.plugin.Arena;
 
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
-
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -21,8 +21,27 @@ public class Arena {
         this.arenaLoc2 = arenaLoc2;
         this.lobbyLoc1 = lobbyLoc1;
         this.lobbyLoc2 = lobbyLoc2;
-        this.gameState = ArenaManager.GameState.WAITING;
+        this.gameState = ArenaManager.GameState.STANDBY;
         this.players = new HashSet<>();
+    }
+
+    private int lavaTaskId = -1; // A field to store the task ID. Initialized to -1 to indicate no task is set.
+
+    public void setLavaTaskId(int taskId) {
+        this.lavaTaskId = taskId;
+    }
+
+    // Method to get the lava task ID
+    public int getLavaTaskId() {
+        return this.lavaTaskId;
+    }
+
+    // Method to cancel the lava task, if it's running
+    public void cancelLavaTask() {
+        if (this.lavaTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(this.lavaTaskId);
+            this.lavaTaskId = -1; // Reset the task ID
+        }
     }
 
     /*
@@ -61,10 +80,13 @@ public class Arena {
     }
 
     public void removePlayer(Player player) {
-        players.remove(player);
-        // Additional logic for removing a player
-    }
 
+        players.remove(player);
+
+        Bukkit.broadcastMessage("Remaining players: " + players.size());
+        // Additional logic for removing a player
+
+    }
     public Set<Player> getPlayers() {
         return new HashSet<>(players);
     }

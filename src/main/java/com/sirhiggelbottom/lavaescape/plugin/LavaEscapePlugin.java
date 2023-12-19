@@ -31,14 +31,13 @@ public class LavaEscapePlugin extends JavaPlugin {
         // Initialize ArenaManager
         arenaManager = new ArenaManager(this, configManager, arena);
 
-        gameEvents = new GameEvents(this);
+        gameEvents = new GameEvents(this, arena, arenaManager, gameManager);
+
         this.getServer().getPluginManager().registerEvents(gameEvents, this);
 
         worldeditAPI = new WorldeditAPI(this, arenaManager, configManager);
 
         gameManager = new GameManager(arenaManager,configManager,worldeditAPI,this);
-
-
 
         // Initialize command executor and bind commands
         LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI, gameManager);

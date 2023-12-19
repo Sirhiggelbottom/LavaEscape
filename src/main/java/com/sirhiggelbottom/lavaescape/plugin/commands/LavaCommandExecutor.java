@@ -114,7 +114,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                                 }
                             case "setlavadelay":
                                 return handleSetLavaDelay(sender, args);
-
+                            case "setgraceperiod":
+                                return handleSetGracePeriod(sender, args);
 
                             case "set-area":
                                 switch (args[4].toLowerCase()){
@@ -151,10 +152,35 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         }return true;
     }
 
+    private boolean handleSetGracePeriod(CommandSender sender, String[] args) {
+
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only players can set the graceperiod.");
+            return true;
+        }
+
+        if(!sender.hasPermission("lavaescape.admin")){
+            sender.sendMessage("You do not have permission to the graceperiod.");
+            return true;
+        }
+
+        String arenaName = args[1];
+        int seconds = argToInt(sender, args[4]);
+
+        arenaManager.setGracePeriod(arenaName, seconds);
+
+        return true;
+    }
+
     private boolean handleSetLavaDelay(CommandSender sender, String[] args) {
 
         if (!(sender instanceof Player)) {
-            sender.sendMessage("Only players can set arena spawnpoints.");
+            sender.sendMessage("Only players can set Lava delay.");
+            return true;
+        }
+
+        if(!sender.hasPermission("lavaescape.admin")){
+            sender.sendMessage("You do not have permission to set Lava delay.");
             return true;
         }
 
@@ -168,7 +194,12 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private boolean handleSetWorldCommand(CommandSender sender, String arenaName) {
 
         if (!(sender instanceof Player)) {
-            sender.sendMessage("Only players can set arena spawnpoints.");
+            sender.sendMessage("Only players can set the worldname");
+            return true;
+        }
+
+        if(!sender.hasPermission("lavaescape.admin")){
+            sender.sendMessage("You do not have permission to set the worldname.");
             return true;
         }
 
@@ -180,6 +211,16 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleSpawnCreation(CommandSender sender, String[] args) {
+
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only players can set arena spawnpoints.");
+            return true;
+        }
+
+        if(!sender.hasPermission("lavaescape.admin")){
+            sender.sendMessage("You do not have permission to create spawnpoints.");
+            return true;
+        }
         String arenaName = args[1];
         sender.sendMessage("Trying to start finding spawnpoints for: " + arenaName);
         Arena arena = arenaManager.getArena(arenaName);
@@ -188,10 +229,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
         File schematicFile = new File(schematicDir, arenaName + ".schem");
 
-        if (!(sender instanceof Player)) {
-            sender.sendMessage("Only players can set arena spawnpoints.");
-            return true;
-        }
+
         if(arenaManager.getArena(arenaName) == null){
             sender.sendMessage("Arena doesn't exist");
             return true;
@@ -390,9 +428,6 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
 
 
     }
-
-
-
 
     // Implementation for /Lava <name> minplayers <int> and /Lava <name> maxplayers <int>
     private boolean handlePlayerLimitsCommand(CommandSender sender, String[] args) {
@@ -612,6 +647,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                     commands.add("maxy");
                     commands.add("createspawns");
                     commands.add("setlavadelay");
+                    commands.add("setgraceperiod");
 
                 }
                 break;

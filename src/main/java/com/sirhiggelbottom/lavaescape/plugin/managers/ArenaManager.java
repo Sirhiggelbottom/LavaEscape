@@ -6,16 +6,15 @@ import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.regions.CuboidRegion;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
 import java.util.logging.Level;
@@ -27,8 +26,9 @@ public class ArenaManager {
     private final Map<String, Arena> arenaNames;
     private final WorldeditAPI worldeditAPI;
     private List<Location> usedSpawns;
-
     private final Arena arena;
+    private HashMap<UUID, List<ItemStack>> playerItems;
+    private HashMap<UUID, Integer> playerExp;
 
     public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager, Arena arena) {
         this.plugin = plugin;
@@ -37,6 +37,8 @@ public class ArenaManager {
         this.arenaNames = new HashMap<>();
         this.worldeditAPI = new WorldeditAPI(plugin, this, configManager);
         usedSpawns = new ArrayList<>();
+        playerItems = new HashMap<>();
+        playerExp = new HashMap<>();
         loadArenas();
     }
 
@@ -127,6 +129,8 @@ public class ArenaManager {
 
             // Set the World name
             configurationSection.set(basePath + ".worldName", worldName);
+            // Set the gracePeriod to default 60 seconds.
+            configurationSection.set(basePath + ".gracePeriod", 60);
             // Set the lavadelay to default 5 seconds.
             configurationSection.set(basePath + ".lavadelay", 5);
 
@@ -188,10 +192,80 @@ public class ArenaManager {
         Arena arena = arenaNames.get(arenaName);
         if (arena != null) {
             arena.removePlayer(player);
+            isGameOver(arenaName);
             // Additional logic for removing player from arena can be implemented here
         }
     }
+    public void isGameOver(String arenaName){
 
+        Bukkit.broadcastMessage("isGameOver has been called");
+
+        Arena arena = this.getArena(arenaName);
+
+
+        if(arena.getPlayers().size() < 2) {
+
+            arena.cancelLavaTask();
+            Bukkit.broadcastMessage("There are only one player left");
+
+            Player winner = arena.getPlayers().iterator().next();
+            /*UUID playerUUID = player.getUniqueId();
+            Player winner = Bukkit.getPlayer(playerUUID);*/
+
+            healPlayer(winner);
+
+            String winnerName = winner.getName();
+
+            this.teleportLobby(winner, arenaName);
+
+            // Resets the arena
+            worldeditAPI.placeSchematic(winner, arenaName);
+
+            Bukkit.broadcastMessage("The winner is: " + winnerName);
+
+            this.removePlayerFromArena(arenaName, winner);
+
+        }
+
+    }
+
+    public void healArenaPlayers(String arenaName){
+        Arena arena4 = getArena(arenaName);
+
+        if(arena4 != null){
+            for(Player player : arena4.getPlayers()){
+                double maxHealth = Objects.requireNonNull(player.getAttribute(Attribute.GENERIC_MAX_HEALTH)).getDefaultValue();
+                player.setHealth(maxHealth);
+                player.setFoodLevel(20);
+                player.setFireTicks(0);
+            }
+        }
+    }
+
+    public void healPlayer(Player player){
+        double maxHealth = Objects.requireNonNull(player.getAttribute(Attribute.GENERIC_MAX_HEALTH)).getDefaultValue();
+        player.setHealth(maxHealth);
+        player.setFoodLevel(20);
+        player.setFireTicks(0);
+    }
+
+    public void setSurvivalGamemode(String arenaName){
+        Arena arena = getArena(arenaName);
+        if(arena != null){
+            for(Player player : arena.getPlayers()){
+                player.setGameMode(GameMode.SURVIVAL);
+            }
+        }
+    }
+
+    public void setAdventureGamemode(String arenaName){
+        Arena arena = getArena(arenaName);
+        if(arena != null){
+            for(Player player : arena.getPlayers()){
+                player.setGameMode(GameMode.ADVENTURE);
+            }
+        }
+    }
     public Set<Player> getPlayersInArena(String arenaName) {
         Arena arena = arenaNames.get(arenaName);
         if (arena != null) {
@@ -232,6 +306,7 @@ public class ArenaManager {
 
 
     public enum GameState {
+        STANDBY,
         WAITING,
         STARTING,
         GRACE,
@@ -250,13 +325,27 @@ public class ArenaManager {
         return arenaNames;
     }
 
+    public Arena findPlayerArena(Player player){
+        List<String> arenaNames = getArenaS();
+        if(arenaNames != null){
+            for(String arenaName : arenaNames){
+                Arena arena = getArena(arenaName);
+                if(arena != null && arena.getPlayers().contains(player)){
+                    return arena;
+                }
+            }
+        }
+        return null;
+    }
+
     public void setSpawnPoints(String arenaName, CommandSender sender){
         sender.sendMessage("Trying to find spawnpoints, please wait");
         Arena arena = getArena(arenaName);
         String basePath = "arenas." + arena.getName();
         List<Location> spawnPoints = findSpawnPoints(arenaName, sender);
-
+        Bukkit.broadcastMessage("Trying to set spawnpoints for " + arena.getName());
         // Creating a new arena section in spawnPoint.yml
+
         tryLogging(() -> configManager.getSpawnPointConfig().createSection(basePath),
                 "an error occurred while creating a new section in spawnPoint.yml");
 
@@ -264,12 +353,13 @@ public class ArenaManager {
         tryLogging(() -> configManager.getSpawnPointConfig().set(basePath + ".name", arena.getName()),
                 "an error occurred while assigning a name to new arena in spawnPoint.yml");*/
 
+        ConfigurationSection configurationSection = configManager.getSpawnPointConfig();
         int index = 1;
         for(Location loc : spawnPoints){
             String spawnPath = basePath + ".SP" + index;
-            configManager.getSpawnPointConfig().set(spawnPath + ".x", loc.getX());
-            configManager.getSpawnPointConfig().set(spawnPath + ".y", loc.getY());
-            configManager.getSpawnPointConfig().set(spawnPath + ".z", loc.getZ());
+            configurationSection.set(spawnPath + ".x", loc.getX());
+            configurationSection.set(spawnPath + ".y", loc.getY());
+            configurationSection.set(spawnPath + ".z", loc.getZ());
             index++;
         }
         configManager.saveSpawnPointConfig();
@@ -298,11 +388,8 @@ public class ArenaManager {
         FileConfiguration arenaConfig = configManager.getArenaConfig();
         String basePath = "arenas." + arenaName;
         ConfigurationSection spawnSection = spawnPointConfig.getConfigurationSection(basePath);
-        ConfigurationSection arenaSection = arenaConfig.getConfigurationSection(basePath);
-        assert arenaSection != null;
-        String worldName = arenaSection.getString( basePath + ".worldName");
-        Bukkit.broadcastMessage("Worldname is: " + worldName);
 
+        String worldName = arenaConfig.getString("arenas." + arenaName + ".worldName");
 
         if(worldName == null){
             Bukkit.broadcastMessage("This worldName doesn't exist.");
@@ -480,8 +567,8 @@ public class ArenaManager {
 
 
     public void randomArenaTeleport (String arenaName, List<Location> spawnPoints){
-
-        Set<Player> players = arena.getPlayers();
+        Arena arena1 = getArena(arenaName);
+        Set<Player> players = arena1.getPlayers();
         List<Location> availableSpawns = spawnPoints.stream()
                 .filter(spawn -> !usedSpawns.contains(spawn))
                 .toList();
@@ -564,6 +651,16 @@ public class ArenaManager {
 
     }
 
+    public void setGracePeriod(String arenaName, int seconds){
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName();
+
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        configurationSection.set(basePath + ".gracePeriod", seconds);
+
+        configManager.saveArenaConfig();
+    }
+
     public void setLavaDelay (String arenaName, int seconds){
         Arena arena = getArena(arenaName);
         String basePath = "arenas." + arena.getName();
@@ -572,6 +669,68 @@ public class ArenaManager {
         configurationSection.set(basePath + ".lavadelay", seconds);
 
         configManager.saveArenaConfig();
+    }
+
+    public void storeAndClearPlayersInventory(String arenaName) {
+
+        for(Player player : getPlayersInArena(arenaName)){
+            UUID playerId = player.getUniqueId();
+
+            // Store items
+            List<ItemStack> items = new ArrayList<>();
+            for (ItemStack item : player.getInventory().getContents()) {
+                if (item != null) {
+                    items.add(item);
+                }
+            }
+            playerItems.put(playerId, items);
+
+            // Store experience
+            int exp = player.getTotalExperience();
+            playerExp.put(playerId, exp);
+
+            // Clear inventory and experience
+            player.getInventory().clear();
+            player.setLevel(0);
+            player.setExp(0);
+            player.setTotalExperience(0);
+        }
+
+    }
+
+    public void restorePlayerInventory(Player player) {
+
+        UUID playerId = player.getUniqueId();
+
+        player.getInventory().clear();
+
+        // Restore items
+        List<ItemStack> items = playerItems.get(playerId);
+        if (items != null) {
+            for (ItemStack item : items) {
+                player.getInventory().addItem(item);
+            }
+            playerItems.remove(playerId);
+        }
+
+        // Restore experience
+        Integer exp = playerExp.get(playerId);
+        if (exp != null) {
+            player.setTotalExperience(exp);
+            playerExp.remove(playerId);
+        }
+
+
+    }
+
+
+    public void giveStartingItems(String arenaName){
+        List<ItemStack> startingItems = configManager.getStartingItems();
+        for(Player player : getPlayersInArena(arenaName)){
+            for(ItemStack item : startingItems){
+                player.getInventory().addItem(item);
+            }
+        }
     }
 
 }

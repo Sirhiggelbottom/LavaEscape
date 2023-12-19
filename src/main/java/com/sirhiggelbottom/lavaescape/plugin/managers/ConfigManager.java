@@ -100,6 +100,7 @@ public class ConfigManager {
         return config.getStringList("blacklisted-blocks");
     }
     // Method to parse item list strings into a list of ItemStacks
+    //@ToDo fix this method, it might be retrieving items from the config.yml wrong.
     public List<ItemStack> parseItemsList(List<Map<String, Object>> itemsList) {
         List<ItemStack> itemList = new ArrayList<>();
         for (Map<String, Object> itemInfo : itemsList) {
@@ -119,16 +120,6 @@ public class ConfigManager {
 
     public String getGameMode(String arenaName) {
         return arenaConfig.getString(arenaName + ".mode", "repetitive"); // Default to "repetitive"
-    }
-
-    // Set and Get methods for grace period
-    public void setGracePeriod(int seconds) {
-        config.set("game-settings.grace-period", seconds);
-        saveConfig();
-    }
-
-    public int getGracePeriod() {
-        return config.getInt("game-settings.grace-period", 60); // Default to 60 seconds
     }
 
     // Set and Get methods for starting items

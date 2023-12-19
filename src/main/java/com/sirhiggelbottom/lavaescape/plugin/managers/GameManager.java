@@ -59,13 +59,23 @@ public class GameManager {
     public void isGameReady(String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
 
+        arenaManager.healArenaPlayers(arenaName);
+
         int minPlayers = arenaManager.getMinPlayers(arenaName);
         if (arena.getPlayers().size() >= minPlayers){
+
             arenaManager.randomArenaTeleport(arenaName,arenaManager.getSpawnPoints(arenaName));
+            arenaManager.storeAndClearPlayersInventory(arenaName);
+            arenaManager.giveStartingItems(arenaName);
+            arenaManager.setSurvivalGamemode(arenaName);
+            arena.setGameState(ArenaManager.GameState.STARTING);
             plugin.setShouldContinueFilling(true);
             lavaTask(arenaName);
+
         }else {
             Bukkit.broadcastMessage("Waiting for more players to start game");
+            arenaManager.setAdventureGamemode(arenaName);
+            arena.setGameState(ArenaManager.GameState.WAITING);
             plugin.setShouldContinueFilling(false);
         }
 
@@ -77,33 +87,48 @@ public class GameManager {
 
         int Ymax = worldeditAPI.findArenaMaximumPointNonDebug(arenaName).getY();
 
+        int gracePeriod = configManager.getArenaConfig().getInt(basePath + ".gracePeriod");
+
+        if(gracePeriod < 1){
+            Bukkit.broadcastMessage("Graceperiod is less than 1, has it been set? Graceperiod is set to 1 second");
+            gracePeriod = 1;
+        }
+
+        int delay = configManager.getArenaConfig().getInt(basePath + ".lavadelay");
+
+        arena.setGameState(ArenaManager.GameState.GRACE);
 
         BukkitScheduler scheduler = plugin.getServer().getScheduler();
-        scheduler.scheduleSyncRepeatingTask(plugin, new Runnable() {
+        int taskId = scheduler.scheduleSyncRepeatingTask(plugin, new Runnable() {
             int currentY = worldeditAPI.findArenaMinimumPointNonDebug(arenaName).getY();
 
             @Override
             public void run() {
                 int maxY = Ymax;
-                Bukkit.broadcastMessage("Max lava level is: " + maxY);
+                Bukkit.broadcastMessage("Max lava level is: " + maxY + " and currentY is set to: " + currentY);
                 if(!plugin.shouldContinueFilling() || currentY >= maxY){
                     Bukkit.broadcastMessage("Lava is no longer rising.");
+                    arena.setGameState(ArenaManager.GameState.WAITING);
                     scheduler.cancelTasks(plugin);
                 }
+
+                if(!arena.getGameState().equals(ArenaManager.GameState.LAVA)){
+                    arena.setGameState(ArenaManager.GameState.LAVA);
+                }
+
                 fillLava(arenaName, currentY);
                 Bukkit.broadcastMessage("Y-level: " + currentY + " is being filled with lava");
                 currentY++;
             }
-        }, 0L,20L * configManager.getArenaConfig().getInt(basePath + ".lavadelay"));
+        }, 20L * gracePeriod,20L * delay);
+        arena.setLavaTaskId(taskId);
     }
 
     public void fillLava(String arenaName, int y){
+
         Arena arena = arenaManager.getArena(arenaName);
         String basePath = "." + arena.getName();
         ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
-
-
-        int maxY = arenaSection.getInt(basePath + ".Y-levels.Ymax");
 
         String worldName = arenaSection.getString(basePath + ".worldName");
 
