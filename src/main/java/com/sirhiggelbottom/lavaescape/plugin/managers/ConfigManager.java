@@ -1,14 +1,11 @@
 package com.sirhiggelbottom.lavaescape.plugin.managers;
 
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
-import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -100,8 +97,8 @@ public class ConfigManager {
         return config.getStringList("blacklisted-blocks");
     }
     // Method to parse item list strings into a list of ItemStacks
-    //@ToDo fix this method, it might be retrieving items from the config.yml wrong.
-    public List<ItemStack> parseItemsList(List<Map<String, Object>> itemsList) {
+
+    /*public List<ItemStack> parseItemsList(List<Map<String, Object>> itemsList) {
         List<ItemStack> itemList = new ArrayList<>();
         for (Map<String, Object> itemInfo : itemsList) {
             Material material = Material.matchMaterial((String) itemInfo.get("item"));
@@ -110,7 +107,7 @@ public class ConfigManager {
             itemList.add(item);
         }
         return itemList;
-    }
+    }*/
 
     // Set and Get methods for game modes
     public void setGameMode(String arenaName, String mode) {
@@ -128,10 +125,10 @@ public class ConfigManager {
         saveConfig();
     }
 
-    public List<ItemStack> getStartingItems() {
+    /*public List<ItemStack> getStartingItems() {
         List<Map<String, Object>> itemsList = (List<Map<String, Object>>) config.getList("game-settings.start-items");
         return parseItemsList(itemsList);
-    }
+    }*/
     public FileConfiguration getArenaConfig() {
         return arenaConfig;
     }

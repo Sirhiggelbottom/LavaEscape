@@ -71,6 +71,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
          -> leave -> arenaName
          */
         switch (args[0].toLowerCase()) {
+            case "menu":
+                return handleMenuCommand(sender);
             case "arena":
                 switch(args[2].toLowerCase()){
                     case "setworld":
@@ -150,6 +152,19 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             default:
                 return false;
         }return true;
+    }
+    //@ToDo This command should open a menu, by calling a menu based on if the sender is a admin/OP or not.
+    private boolean handleMenuCommand(CommandSender sender) {
+        if(!isSenderPlayer(sender)){
+            return true;
+        }
+
+        if(isSenderAdmin(sender)){
+            // Call menu for Admins/OP's
+            return true;
+        }
+        // Call menu for normal players.
+        return true;
     }
 
     private boolean handleSetGracePeriod(CommandSender sender, String[] args) {
@@ -558,13 +573,43 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             return false;
         }
 
-        if (!player.hasPermission("lavaescape.admin.setarea")) {
+        if (!player.hasPermission("lavaescape.admin")) {
             player.sendMessage("You do not have permission to set arena/lobby areas.");
             return false;
         }
 
         return true;
 
+    }
+
+    private boolean isSenderAdmin(CommandSender sender){
+
+        if(isSenderPlayer(sender)){
+            if (!sender.hasPermission("lavaescape.admin")) {
+                sender.sendMessage("You do not have permission to execute this command.");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isSenderPlayer(CommandSender sender){
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only players can execute this command.");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean doesArenaExist(CommandSender sender,String[] args){
+        String arenaName = args[1];
+        Arena arena = arenaManager.getArena(arenaName);
+
+        if (arena == null) {
+            sender.sendMessage("Arena '" + arenaName + "' does not exist.");
+            return false;
+        }
+        return true;
     }
 
     /* Command hierarchy:

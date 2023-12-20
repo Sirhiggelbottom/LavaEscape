@@ -51,6 +51,7 @@ public class ArenaManager {
             }
         }
     }
+    // Method not in use
     private Arena loadArena(String arenaName) {
         ConfigurationSection section = configManager.getArenaConfig().getConfigurationSection("arenas." + arenaName);
         if (section == null) return null;
@@ -63,6 +64,7 @@ public class ArenaManager {
 
         return new Arena(arenaName, arenaLoc1, arenaLoc2, lobbyLoc1, lobbyLoc2);
     }
+    // Called by a method that is not in use, will probably throw an error when executed.
     private Location getLocationFromSection(ConfigurationSection section, String path) {
         World world = plugin.getServer().getWorld(section.getString(path + ".world"));
         int x = section.getInt(path + ".x");
@@ -279,6 +281,9 @@ public class ArenaManager {
             return new HashSet<>(arena.getPlayers());
         }
         return new HashSet<>();
+    }
+    public int getPlayerAmountInArena(String arenaName){
+        return getPlayersInArena(arenaName).size();
     }
     // Set minimum players for an arena
     public void setMinPlayers(String arenaName, int minPlayers) {

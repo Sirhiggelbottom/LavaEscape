@@ -127,5 +127,9 @@ public class GameEvents implements Listener {
         } else event.setCancelled(true);
 
     }
+    @EventHandler
+    public void onPlayerFallDamage(EntityDamageEvent event){
+
+    }
 }
 
