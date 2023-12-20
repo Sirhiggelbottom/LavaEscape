@@ -27,7 +27,6 @@ public class GameEvents implements Listener {
     private final Map<UUID, Location[]> playerSelections;
     private final Arena arena;
     private final ArenaManager arenaManager;
-
     private final GameManager gameManager;
 
     public GameEvents(LavaEscapePlugin plugin, Arena arena, ArenaManager arenaManager, GameManager gameManager) {
@@ -38,27 +37,6 @@ public class GameEvents implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         this.arena = arena;
     }
-
-    /*
-    @EventHandler
-    public void onPlayerInteract(PlayerInteractEvent event) {
-        ItemStack item = event.getItem();
-        if (item != null && item.getType() == Material.STICK && item.getItemMeta().getDisplayName().equals("Wand")) {
-            if (event.getAction() == Action.LEFT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-                UUID playerId = event.getPlayer().getUniqueId();
-                Location[] selections = playerSelections.computeIfAbsent(playerId, k -> new Location[2]);
-
-                if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
-                    selections[0] = event.getClickedBlock().getLocation();
-                    event.getPlayer().sendMessage("First position set.");
-                } else {
-                    selections[1] = event.getClickedBlock().getLocation();
-                    event.getPlayer().sendMessage("Second position set.");
-                }
-            }
-        }
-    }*/
-
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
@@ -92,8 +70,6 @@ public class GameEvents implements Listener {
             }
         }
     }
-
-
     @EventHandler
     public void playerWandBlockBreak(BlockBreakEvent event){
         ItemStack item = event.getPlayer().getItemInHand();
@@ -106,18 +82,15 @@ public class GameEvents implements Listener {
         //event.setCancelled(item != null && item.getType() == Material.STICK && Objects.requireNonNull(item.getItemMeta()).getDisplayName().equals("Wand"));
 
     }
-
     public Location getFirstPosition(UUID playerId) {
         Location[] selections = playerSelections.get(playerId);
         return (selections != null && selections[0] != null) ? selections[0] : null;
     }
-
     public Location getSecondPosition(UUID playerId) {
         Location[] selections = playerSelections.get(playerId);
         return (selections != null && selections[1] != null) ? selections[1] : null;
     }
     private final Map<UUID , Long> lastInteract = new HashMap<>();
-
     @EventHandler
     public void onFatalDamage(EntityDamageEvent event){
 
@@ -142,7 +115,6 @@ public class GameEvents implements Listener {
         }
 
     }
-
     @EventHandler
     public void onPlayerDamage(EntityDamageByEntityEvent event) {
 
@@ -155,6 +127,5 @@ public class GameEvents implements Listener {
         } else event.setCancelled(true);
 
     }
-
 }
 

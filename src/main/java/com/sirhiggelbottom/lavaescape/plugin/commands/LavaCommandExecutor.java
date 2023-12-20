@@ -435,6 +435,21 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage("Usage: /lava <name> minplayers or maxplayers <int>");
             return true;
         }
+
+        if(testCommand(sender, args)){
+            String arenaName = args[1];
+            String minOrMax = args[3];
+            int playerAmount = Integer.parseInt(args[4]);
+
+            switch (minOrMax){
+                case "miny":
+                    arenaManager.setMinPlayers(arenaName, playerAmount);
+                case "maxy":
+                    arenaManager.setMaxPlayers(arenaName, playerAmount);
+                default:
+                    sender.sendMessage("Usage: /lava <name> minplayers or maxplayers <int>");
+            }
+        }
         // Logic to set player limits for an arena
         return true;
     }
@@ -447,6 +462,14 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             /*If mode == competitive then set gameMode to competitive mode
               if mode == server then set gameMode to server mode*/
         }
+
+        if(testCommand(sender, args)){
+            String arenaName = args[1];
+            String gameMode = args[4];
+
+            arenaManager.changeGameMode(arenaName, gameMode);
+        }
+
         // Logic to set game mode for an arena
         return true;
     }
@@ -518,6 +541,30 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage(this.getListOfPlayerCommands().toString());
         }
         return true;
+    }
+
+    private boolean testCommand (CommandSender sender, String[] args){
+        String arenaName = args[1];
+        Arena arena = arenaManager.getArena(arenaName);
+        Player player = (Player) sender;
+
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("Only players can set arena and lobby areas.");
+            return false;
+        }
+
+        if (arena == null) {
+            player.sendMessage("Arena '" + arenaName + "' does not exist.");
+            return false;
+        }
+
+        if (!player.hasPermission("lavaescape.admin.setarea")) {
+            player.sendMessage("You do not have permission to set arena/lobby areas.");
+            return false;
+        }
+
+        return true;
+
     }
 
     /* Command hierarchy:

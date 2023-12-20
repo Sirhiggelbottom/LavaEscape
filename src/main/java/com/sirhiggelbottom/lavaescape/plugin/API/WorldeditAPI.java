@@ -89,36 +89,43 @@ public class WorldeditAPI {
 
         File schematicFile = new File(schematicDir, arenaName + ".schem");
 
-        World world = BukkitAdapter.adapt(player.getWorld());
-        BlockVector3 point1 = BlockVector3.at(pos1.getX(), pos1.getY(), pos1.getZ());
-        BlockVector3 point2 = BlockVector3.at(pos2.getX(), pos2.getY(), pos2.getZ());
 
-        CuboidRegion region = new CuboidRegion(world, point1, point2);
-        Clipboard clipboard = new BlockArrayClipboard(region);
+        World world = loadWorld(arenaName);
+
+        //World world = BukkitAdapter.adapt(player.getWorld());
+
+        if(world != null){
+            BlockVector3 point1 = BlockVector3.at(pos1.getX(), pos1.getY(), pos1.getZ());
+            BlockVector3 point2 = BlockVector3.at(pos2.getX(), pos2.getY(), pos2.getZ());
+
+            CuboidRegion region = new CuboidRegion(world, point1, point2);
+            Clipboard clipboard = new BlockArrayClipboard(region);
 
 
 
-        ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
-                world, region, clipboard, region.getMinimumPoint()
-        );
+            ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
+                    world, region, clipboard, region.getMinimumPoint()
+            );
 
-        try {
-            Operations.complete(forwardExtentCopy);
-        }catch (Exception e){
-            player.sendMessage("Error copying region: " + e.getMessage());
-            e.printStackTrace();
+            try {
+                Operations.complete(forwardExtentCopy);
+            }catch (Exception e){
+                player.sendMessage("Error copying region: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+
+            try (ClipboardWriter writer = ClipboardFormats.findByAlias("sponge.3").getWriter(new FileOutputStream(schematicFile))) {
+                writer.write(clipboard);
+                player.sendMessage("Schematic saved as " + schematicFile.getName());
+            } catch (IOException e) {
+                player.sendMessage("Error saving schematic: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+        }else{
+            Bukkit.broadcastMessage("World is not set.");
         }
-
-
-        try (ClipboardWriter writer = ClipboardFormats.findByAlias("sponge.3").getWriter(new FileOutputStream(schematicFile))) {
-            writer.write(clipboard);
-            player.sendMessage("Schematic saved as " + schematicFile.getName());
-        } catch (IOException e) {
-            player.sendMessage("Error saving schematic: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-
 
     }
 
@@ -294,13 +301,13 @@ public class WorldeditAPI {
 
         Player player = (Player) sender;
         World world = BukkitAdapter.adapt(player.getWorld());
-        BlockVector3 point = findArenaMinimumPoint(sender, arenaName);
+        BlockVector3 point = findArenaMinimumPointNonDebug(arenaName);
 
         try (EditSession editSession = WorldEdit.getInstance().newEditSession(world)) {
             Operation operation = new ClipboardHolder(clipboard)
                     .createPaste(editSession)
                     .to(point)
-                    .ignoreAirBlocks(false) // Include this if you want to paste air blocks as well
+                    .ignoreAirBlocks(false)
                     .build();
             Operations.complete(operation);
             sender.sendMessage("Schematic: " + schematicFile + " successfully pasted at: " + point.getX() + " " + point.getY() + " " + point.getZ());
@@ -333,12 +340,60 @@ public class WorldeditAPI {
         return region.getMinimumPoint();
     }
 
+    public World loadWorld(String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
+        String basePath = "." + arena.getName();
+        ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
+
+        if(arenaSection != null){
+            String worldName = arenaSection.getString(basePath + ".worldName");
+
+            if(worldName == null){
+                Bukkit.broadcastMessage("This worldName doesn't exist.");
+                return null;
+            }
+
+            org.bukkit.World bukkitWorld = Bukkit.getWorld(worldName);
+
+            if(bukkitWorld == null){
+                return null;
+            }
+
+            return BukkitAdapter.adapt(bukkitWorld);
+        }
+        else {
+            return null;
+        }
+    }
+
     public BlockVector3 findArenaMinimumPointNonDebug(String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
         String basePath = "." + arena.getName();
         ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
 
-        String worldName = arenaSection.getString(basePath + ".worldName");
+        if(arenaSection != null){
+
+            World world = loadWorld(arenaName);
+
+            int pos1X = arenaSection.getInt(basePath + ".arena.pos1.x");
+            int pos1Y = arenaSection.getInt(basePath + ".arena.pos1.y");
+            int pos1Z = arenaSection.getInt(basePath + ".arena.pos1.z");
+
+            int pos2X = arenaSection.getInt(basePath + ".arena.pos2.x");
+            int pos2Y = arenaSection.getInt(basePath + ".arena.pos2.y");
+            int pos2Z = arenaSection.getInt(basePath + ".arena.pos2.z");
+
+            BlockVector3 point1 = BlockVector3.at(pos1X, pos1Y, pos1Z);
+            BlockVector3 point2 = BlockVector3.at(pos2X, pos2Y, pos2Z);
+
+            CuboidRegion region = new CuboidRegion(world, point1, point2);
+
+            return region.getMinimumPoint();
+        } else {
+            return null;
+        }
+
+        /*String worldName = arenaSection.getString(basePath + ".worldName");
 
         if(worldName == null){
             Bukkit.broadcastMessage("This worldName doesn't exist.");
@@ -351,22 +406,9 @@ public class WorldeditAPI {
             return null;
         }
 
-        World world = BukkitAdapter.adapt(bukkitWorld);
+        World world = BukkitAdapter.adapt(bukkitWorld);*/
 
-        int pos1X = arenaSection.getInt(basePath + ".arena.pos1.x");
-        int pos1Y = arenaSection.getInt(basePath + ".arena.pos1.y");
-        int pos1Z = arenaSection.getInt(basePath + ".arena.pos1.z");
 
-        int pos2X = arenaSection.getInt(basePath + ".arena.pos2.x");
-        int pos2Y = arenaSection.getInt(basePath + ".arena.pos2.y");
-        int pos2Z = arenaSection.getInt(basePath + ".arena.pos2.z");
-
-        BlockVector3 point1 = BlockVector3.at(pos1X, pos1Y, pos1Z);
-        BlockVector3 point2 = BlockVector3.at(pos2X, pos2Y, pos2Z);
-
-        CuboidRegion region = new CuboidRegion(world, point1, point2);
-
-        return region.getMinimumPoint();
     }
     public BlockVector3 findArenaMaximumPointNonDebug(String arenaName){
         Arena arena = arenaManager.getArena(arenaName);

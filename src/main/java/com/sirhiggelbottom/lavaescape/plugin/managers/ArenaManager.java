@@ -29,7 +29,6 @@ public class ArenaManager {
     private final Arena arena;
     private HashMap<UUID, List<ItemStack>> playerItems;
     private HashMap<UUID, Integer> playerExp;
-
     public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager, Arena arena) {
         this.plugin = plugin;
         this.configManager = configManager;
@@ -41,7 +40,6 @@ public class ArenaManager {
         playerExp = new HashMap<>();
         loadArenas();
     }
-
     private void loadArenas() {
         ConfigurationSection arenasSection = configManager.getArenaConfig().getConfigurationSection("arenas");
         if (arenasSection != null) {
@@ -53,7 +51,6 @@ public class ArenaManager {
             }
         }
     }
-
     private Arena loadArena(String arenaName) {
         ConfigurationSection section = configManager.getArenaConfig().getConfigurationSection("arenas." + arenaName);
         if (section == null) return null;
@@ -66,7 +63,6 @@ public class ArenaManager {
 
         return new Arena(arenaName, arenaLoc1, arenaLoc2, lobbyLoc1, lobbyLoc2);
     }
-
     private Location getLocationFromSection(ConfigurationSection section, String path) {
         World world = plugin.getServer().getWorld(section.getString(path + ".world"));
         int x = section.getInt(path + ".x");
@@ -74,8 +70,6 @@ public class ArenaManager {
         int z = section.getInt(path + ".z");
         return new Location(world, x, y, z);
     }
-
-
     public void createArena(String arenaName, World world) {
 
         if(arenaNames.containsKey(arenaName)){
@@ -86,32 +80,40 @@ public class ArenaManager {
         String worldName = world.getName();
         saveNewArena(arena, worldName);
     }
-
     public void saveTheArena(Arena arena){
         String basePath = "arenas." + arena.getName();
         saveLocationToConfig(basePath + ".arena.pos1", arena.getArenaLoc1());
         saveLocationToConfig(basePath + ".arena.pos2", arena.getArenaLoc2());
         configManager.saveArenaConfig();
     }
-
     public void saveTheLobby(Arena arena){
         String basePath = "arenas." + arena.getName();
         saveLocationToConfig(basePath + ".lobby.pos1", arena.getLobbyLoc1());
         saveLocationToConfig(basePath + ".lobby.pos2", arena.getLobbyLoc2());
         configManager.saveArenaConfig();
     }
-
     public void saveNewArena(Arena arena, String worldName){
         // Setting arena path in arena.yml file
         String basePath = "arenas." + arena.getName();
+        String playersPath = basePath + ".players";
+        String yLevelPath = basePath + ".Y-levels";
+        String timePath = basePath + ".timeValues";
+        String modePath = basePath + ".mode";
+        String itemPath = basePath + ".start-items";
 
         // Creating a new arena section in arena.yml
         tryLogging(() -> configManager.getArenaConfig().createSection(basePath),
                 "an error occurred while creating a new section in arena.yml");
 
-        // Sets the arena name
+        // Saving the worldName to arena.yml
+        tryLogging(()-> configManager.getArenaConfig().set(basePath + ".worldName", worldName),
+        "an error occurred while saving the worldName in arena.yml");
+
+
+        /*// Sets the arena name
         tryLogging(() -> configManager.getArenaConfig().set(basePath + ".name", arena.getName()),
-                "an error occurred while assigning a name to new arena in arena.yml");
+                "an error occurred while assigning a name to new arena in arena.yml");*/
+
 
         // Setting placeholder values for the locations and Y-levels to "none"
         tryLogging(() ->{
@@ -120,19 +122,27 @@ public class ArenaManager {
             configurationSection.set(basePath + ".arena.pos2", "none");
             configurationSection.set(basePath + ".lobby.pos1", "none");
             configurationSection.set(basePath + ".lobby.pos2", "none");
-            configurationSection.set(basePath + ".Y-levels.Ymin","none");
-            configurationSection.set(basePath + ".Y-levels.Ymax","none");
+            configurationSection.set(yLevelPath + ".Ymin","none");
+            configurationSection.set(yLevelPath + ".Ymax","none");
 
             // Set min and max players to default values
-            configurationSection.set(basePath + ".minPlayers", 2);
-            configurationSection.set(basePath + ".maxPlayers", 10);
+            configurationSection.set(playersPath + ".minPlayers", 2);
+            configurationSection.set(playersPath + ".maxPlayers", 10);
 
-            // Set the World name
-            configurationSection.set(basePath + ".worldName", worldName);
+            /*// Set the World name
+            configurationSection.set(basePath + ".worldName", worldName);*/
             // Set the gracePeriod to default 60 seconds.
-            configurationSection.set(basePath + ".gracePeriod", 60);
+            configurationSection.set(timePath + ".gracePeriod", 60);
             // Set the lavadelay to default 5 seconds.
-            configurationSection.set(basePath + ".lavadelay", 5);
+            configurationSection.set(timePath + ".lavadelay", 5);
+            // Set gamemode to server (Repeating) mode by default.
+            configurationSection.set(modePath, "server");
+            // Set default starting items.
+
+            configurationSection.set(itemPath + ".STONE_SWORD" , 1);
+            configurationSection.set(itemPath + ".STONE_PICKAXE" , 1);
+            configurationSection.set(itemPath + ".BAKED_POTATO" , 5);
+
 
         }, "an error occurred while assigning placeholder values to new arena in arena.yml");
 
@@ -148,7 +158,6 @@ public class ArenaManager {
             plugin.getLogger().log(Level.SEVERE, errorMessage, e);
         }
     }
-
     public void deleteArena(CommandSender sender, String arenaName){
 
         if(!(arenaNames.containsKey(arenaName))){
@@ -160,34 +169,41 @@ public class ArenaManager {
         String basePath = "arenas." + arenaName;
 
         configManager.getArenaConfig().set(basePath,null);
+        configManager.getSpawnPointConfig().set(basePath, null);
         worldeditAPI.deleteSchematic(sender, arenaName, "arena");
         worldeditAPI.deleteSchematic(sender, arenaName, "lobby");
         configManager.saveArenaConfig();
 
     }
     private void saveLocationToConfig(String path, Location location) {
-        configManager.getArenaConfig().set(path + ".world", location.getWorld().getName());
+        //configManager.getArenaConfig().set(path + ".world", location.getWorld().getName());
         configManager.getArenaConfig().set(path + ".x", location.getBlockX());
         configManager.getArenaConfig().set(path + ".y", location.getBlockY());
         configManager.getArenaConfig().set(path + ".z", location.getBlockZ());
     }
-
-    public void changeGameState(String arenaName, GameState newState) {
+    public void changeGameMode(String arenaName, String gamemode) {
         Arena arena = arenaNames.get(arenaName);
         if (arena != null) {
-            arena.setGameState(newState);
-            // Additional logic for game state change can be implemented here
-        }
-    }
+            ConfigurationSection config = configManager.getArenaConfig();
+            String modePath = "arenas." + arena.getName() + ".mode";
 
+            config.set(modePath, gamemode);
+
+            configManager.saveArenaConfig();
+
+
+        }
+
+    }
     public void addPlayerToArena(String arenaName, Player player) {
         Arena arena = arenaNames.get(arenaName);
-        if (arena != null) {
+        if (arena != null && arena.getPlayers().size() < getMaxPlayers(arenaName)) {
             arena.addPlayer(player);
             // Additional logic for adding player to arena can be implemented here
+        } else if (arena != null && arena.getPlayers().size() >= getMaxPlayers(arenaName)) {
+            player.sendMessage("Arena is full.");
         }
     }
-
     public void removePlayerFromArena(String arenaName, Player player) {
         Arena arena = arenaNames.get(arenaName);
         if (arena != null) {
@@ -198,25 +214,20 @@ public class ArenaManager {
     }
     public void isGameOver(String arenaName){
 
-        Bukkit.broadcastMessage("isGameOver has been called");
-
         Arena arena = this.getArena(arenaName);
-
 
         if(arena.getPlayers().size() < 2) {
 
             arena.cancelLavaTask();
-            Bukkit.broadcastMessage("There are only one player left");
 
             Player winner = arena.getPlayers().iterator().next();
-            /*UUID playerUUID = player.getUniqueId();
-            Player winner = Bukkit.getPlayer(playerUUID);*/
 
             healPlayer(winner);
+            restorePlayerInventory(winner);
 
             String winnerName = winner.getName();
 
-            this.teleportLobby(winner, arenaName);
+            teleportLobby(winner, arenaName);
 
             // Resets the arena
             worldeditAPI.placeSchematic(winner, arenaName);
@@ -228,12 +239,11 @@ public class ArenaManager {
         }
 
     }
-
     public void healArenaPlayers(String arenaName){
-        Arena arena4 = getArena(arenaName);
+        Arena arena = getArena(arenaName);
 
-        if(arena4 != null){
-            for(Player player : arena4.getPlayers()){
+        if(arena != null){
+            for(Player player : arena.getPlayers()){
                 double maxHealth = Objects.requireNonNull(player.getAttribute(Attribute.GENERIC_MAX_HEALTH)).getDefaultValue();
                 player.setHealth(maxHealth);
                 player.setFoodLevel(20);
@@ -241,14 +251,12 @@ public class ArenaManager {
             }
         }
     }
-
     public void healPlayer(Player player){
         double maxHealth = Objects.requireNonNull(player.getAttribute(Attribute.GENERIC_MAX_HEALTH)).getDefaultValue();
         player.setHealth(maxHealth);
         player.setFoodLevel(20);
         player.setFireTicks(0);
     }
-
     public void setSurvivalGamemode(String arenaName){
         Arena arena = getArena(arenaName);
         if(arena != null){
@@ -257,7 +265,6 @@ public class ArenaManager {
             }
         }
     }
-
     public void setAdventureGamemode(String arenaName){
         Arena arena = getArena(arenaName);
         if(arena != null){
@@ -273,38 +280,31 @@ public class ArenaManager {
         }
         return new HashSet<>();
     }
-
     // Set minimum players for an arena
     public void setMinPlayers(String arenaName, int minPlayers) {
         Arena arena = getArena(arenaName);
-        String basePath = "arenas." + arena.getName();
+        String basePath = "arenas." + arena.getName() + ".players";
         configManager.getArenaConfig().set(basePath + ".minPlayers", minPlayers);
         configManager.saveArenaConfig();
     }
-
     // Get minimum players for an arena
     public int getMinPlayers(String arenaName) {
         Arena arena = getArena(arenaName);
-        String basePath = "arenas." + arena.getName();
+        String basePath = "arenas." + arena.getName() + ".players";
         return configManager.getArenaConfig().getInt(basePath + ".minPlayers", 2); // Default to 2
     }
-
-    public void setMaxPlayers(String arenaName, int minPlayers) {
+    public void setMaxPlayers(String arenaName, int maxPlayers) {
         Arena arena = getArena(arenaName);
-        String basePath = "arenas." + arena.getName();
-        configManager.getArenaConfig().set(basePath + ".maxPlayers", minPlayers);
+        String basePath = "arenas." + arena.getName() + ".players";
+        configManager.getArenaConfig().set(basePath + ".maxPlayers", maxPlayers);
         configManager.saveArenaConfig();
     }
-
     // Get minimum players for an arena
     public int getMaxPlayers(String arenaName) {
         Arena arena = getArena(arenaName);
-        String basePath = "arenas." + arena.getName();
+        String basePath = "arenas." + arena.getName() + ".players";
         return configManager.getArenaConfig().getInt(basePath + ".maxPlayers", 10); // Default to 10
     }
-
-
-
     public enum GameState {
         STANDBY,
         WAITING,
@@ -324,7 +324,6 @@ public class ArenaManager {
         } else return null;
         return arenaNames;
     }
-
     public Arena findPlayerArena(Player player){
         List<String> arenaNames = getArenaS();
         if(arenaNames != null){
@@ -337,7 +336,6 @@ public class ArenaManager {
         }
         return null;
     }
-
     public void setSpawnPoints(String arenaName, CommandSender sender){
         sender.sendMessage("Trying to find spawnpoints, please wait");
         Arena arena = getArena(arenaName);
@@ -365,7 +363,6 @@ public class ArenaManager {
         configManager.saveSpawnPointConfig();
         
     }
-
     public boolean  areSpawnpointsSet(String arenaName){
         int numberOfSpawnpoints = 0;
         ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas." + arenaName);
@@ -382,7 +379,6 @@ public class ArenaManager {
             return false;
         } else return true;
     }
-
     public List<Location> getSpawnPoints(String arenaName) {
         FileConfiguration spawnPointConfig = configManager.getSpawnPointConfig();
         FileConfiguration arenaConfig = configManager.getArenaConfig();
@@ -417,7 +413,6 @@ public class ArenaManager {
         }
         return spawnPoints;
     }
-
     public boolean setMinYLevel(Arena arena, int i, Player player){
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
@@ -439,7 +434,6 @@ public class ArenaManager {
         }
         return true;
     }
-
     public boolean setMaxYLevel(Arena arena, int i,Player player){
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
@@ -449,7 +443,6 @@ public class ArenaManager {
         player.sendMessage("Ymax-level set to Ylevel: " + i);
         return true;
     }
-
     public List<Location> findSpawnPoints(String arenaName, CommandSender sender) {
         Arena arena = getArena(arenaName);
 
@@ -464,12 +457,13 @@ public class ArenaManager {
         World world = player.getWorld();
 
         String basePath = "arenas." + arena.getName();
+        String yLevelPath = basePath + ".Y-levels";
         FileConfiguration config = configManager.getArenaConfig();
 
 
 
-        int Ymax = config.getInt(basePath + ".Y-levels.Ymax");
-        int Ymin = config.getInt(basePath + ".Y-levels.Ymin");
+        int Ymax = config.getInt(yLevelPath + ".Ymax");
+        int Ymin = config.getInt(yLevelPath + ".Ymin");
 
         // Load the schematic and calculate the volume
         Clipboard clipboard = worldeditAPI.loadArenaSchematic(arenaName, sender);
@@ -541,8 +535,6 @@ public class ArenaManager {
 
         return selectedSpawnPoints;
     }
-
-
     private boolean isValidSpawnPoint(Block feetBlock) {
         Block groundBlock = feetBlock.getRelative(BlockFace.DOWN);
         Block headBlock = feetBlock.getRelative(BlockFace.UP);
@@ -553,22 +545,17 @@ public class ArenaManager {
                 && !isOnTopOfTree(groundBlock) && headBlock.getType() == Material.AIR
                 && aboveHeadBlock.getType() == Material.AIR;
     }
-
-
     private boolean isOnSolidGround(Block block) {
         Block belowBlock = block.getRelative(BlockFace.DOWN);
         return belowBlock.getType().isSolid();
     }
-
     private boolean isOnTopOfTree(Block block) {
         Material type = block.getType();
         return type.toString().endsWith("_LOG") || type.toString().endsWith("_LEAVES");
     }
-
-
     public void randomArenaTeleport (String arenaName, List<Location> spawnPoints){
-        Arena arena1 = getArena(arenaName);
-        Set<Player> players = arena1.getPlayers();
+        Arena arena = getArena(arenaName);
+        Set<Player> players = arena.getPlayers();
         List<Location> availableSpawns = spawnPoints.stream()
                 .filter(spawn -> !usedSpawns.contains(spawn))
                 .toList();
@@ -590,7 +577,6 @@ public class ArenaManager {
         }
 
     }
-
     public void teleportLobby(CommandSender sender, String arenaName) {
         if (!(sender instanceof Player)) {
             sender.sendMessage("This command can only be used by a player.");
@@ -622,7 +608,6 @@ public class ArenaManager {
         player.teleport(teleportLocation);
         sender.sendMessage("Teleported to the lobby.");
     }
-
     public boolean checkYlevels(String arenaName){
         Arena arena = getArena(arenaName);
         String basepath = "arenas." + arena.getName();
@@ -635,7 +620,6 @@ public class ArenaManager {
         } else return objectminY instanceof Integer && objectmaxY instanceof Integer;
 
     }
-
     public void setWorld(String arenaName, World world){
         Arena arena = getArena(arenaName);
         String basePath = "arenas." + arena.getName();
@@ -650,7 +634,6 @@ public class ArenaManager {
         configManager.saveArenaConfig();
 
     }
-
     public void setGracePeriod(String arenaName, int seconds){
         Arena arena = getArena(arenaName);
         String basePath = "arenas." + arena.getName();
@@ -660,7 +643,6 @@ public class ArenaManager {
 
         configManager.saveArenaConfig();
     }
-
     public void setLavaDelay (String arenaName, int seconds){
         Arena arena = getArena(arenaName);
         String basePath = "arenas." + arena.getName();
@@ -670,7 +652,6 @@ public class ArenaManager {
 
         configManager.saveArenaConfig();
     }
-
     public void storeAndClearPlayersInventory(String arenaName) {
 
         for(Player player : getPlayersInArena(arenaName)){
@@ -697,7 +678,6 @@ public class ArenaManager {
         }
 
     }
-
     public void restorePlayerInventory(Player player) {
 
         UUID playerId = player.getUniqueId();
@@ -722,17 +702,37 @@ public class ArenaManager {
 
 
     }
+    private List<ItemStack> parseStartingItems(String arenaName){
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+        String basePath = "arenas." + arenaName + ".start-items";
+        ConfigurationSection config = arenaConfig.getConfigurationSection(basePath);
+        List<ItemStack> items = new ArrayList<>();
+        if(config != null){
 
+            Map<String, Object> objects = config.getValues(false);
 
+            for(Map.Entry<String, Object> entry : objects.entrySet()){
+                if(entry.getValue() instanceof Integer){
+                    Material material = Material.getMaterial(entry.getKey());
+                    if(material != null){
+                        ItemStack item = new ItemStack(material, (Integer) entry.getValue());
+                        items.add(item);
+                    }
+                }
+            }
+        }
+
+        return items;
+    }
     public void giveStartingItems(String arenaName){
-        List<ItemStack> startingItems = configManager.getStartingItems();
+
+        List<ItemStack> startingItems = parseStartingItems(arenaName);
         for(Player player : getPlayersInArena(arenaName)){
             for(ItemStack item : startingItems){
                 player.getInventory().addItem(item);
             }
         }
     }
-
 }
 
 // Additional methods and utilities as necessary

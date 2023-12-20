@@ -62,6 +62,7 @@ public class GameManager {
         arenaManager.healArenaPlayers(arenaName);
 
         int minPlayers = arenaManager.getMinPlayers(arenaName);
+        int remainingPlayersForStart = minPlayers - arena.getPlayers().size();
         if (arena.getPlayers().size() >= minPlayers){
 
             arenaManager.randomArenaTeleport(arenaName,arenaManager.getSpawnPoints(arenaName));
@@ -73,7 +74,8 @@ public class GameManager {
             lavaTask(arenaName);
 
         }else {
-            Bukkit.broadcastMessage("Waiting for more players to start game");
+            Bukkit.broadcastMessage("Waiting for more players to start game " + remainingPlayersForStart + " is needed before the game can start.");
+            Bukkit.broadcastMessage("There is: " + arena.getPlayers().size() + " present in the lobby");
             arenaManager.setAdventureGamemode(arenaName);
             arena.setGameState(ArenaManager.GameState.WAITING);
             plugin.setShouldContinueFilling(false);
@@ -83,7 +85,7 @@ public class GameManager {
 
     public void lavaTask(String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
-        String basePath = "arenas." + arena.getName();
+        String basePath = "arenas." + arena.getName() + ".timeValues";
 
         int Ymax = worldeditAPI.findArenaMaximumPointNonDebug(arenaName).getY();
 
