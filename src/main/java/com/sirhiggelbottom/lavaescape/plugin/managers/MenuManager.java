@@ -20,6 +20,7 @@ public class MenuManager {
         private final List<Integer> availableArenaSlots;
         private List<String> surplusArenas;
         private Map<UUID, Integer> currentPlayerPage;
+        private Map<UUID, Integer> previousPlayerPage;
         private final int amountOfArenasPerPage;
 
 
@@ -27,15 +28,21 @@ public class MenuManager {
         this.arenaManager = arenaManager;
         availableArenaSlots = new ArrayList<>(Arrays.asList(10, 12, 14, 16, 19, 21, 23, 25, 28, 30, 32, 34));
         currentPlayerPage = new HashMap<>();
+        previousPlayerPage = new HashMap<>();
         surplusArenas = new ArrayList<>();
         amountOfArenasPerPage = 12;
     }
-    public void playerMenu(CommandSender sender){
+    public void mainMenu(CommandSender sender){
         Player player = (Player) sender;
-
+        List<Integer> usedSlots;
         int invSize = 27;
 
-        Inventory inv = Bukkit.createInventory(null, invSize, ChatColor.RED.toString() + ChatColor.BOLD + "LAVA Escape: Main menu");
+        // Adds slots used for buttons to an Array for protection.
+        if(player.hasPermission("lavaescape.admin")){
+            usedSlots = new ArrayList<>(Arrays.asList(11, 13, 15)); // 11 = List arenas, 13 = Create new arena and 15 = Exit the menu.
+        } else usedSlots = new ArrayList<>(Arrays.asList(11, 15));
+
+        Inventory inv = Bukkit.createInventory(null, invSize, ChatColor.DARK_RED.toString() + ChatColor.BOLD + "LAVA Escape: Main menu");
 
         // Button to list all arenas.
         ItemStack arenas = new ItemStack(Material.LAVA_BUCKET);
@@ -48,20 +55,39 @@ public class MenuManager {
 
         inv.setItem(arenasSlot, arenas);
 
+        // If player is an Admin or OP, a "Create New Arena" button appears.
+        if(player.hasPermission("lavaescape.admin")){
+            ItemStack create = new ItemStack(Material.ANVIL);
+            int createSlot = 13;
+            ItemMeta createMeta = arenas.getItemMeta();
+            assert createMeta != null;
+            createMeta.setDisplayName(ChatColor.RED + "Create New Arena");
+            createMeta.setLore(List.of(ChatColor.GRAY + "Creates a new arena"));
+            create.setItemMeta(createMeta);
+
+            inv.setItem(createSlot, create);
+        }
+
         // Exit button
         int exitSlot = 15;
         inv.setItem(exitSlot, getExitItem());
 
-        // For loop for filling up the inventory space around the Arenas and Exit button.
+        // For loop for filling up the inventory space around the Arenas, Create new arena and Exit button.
         for(int i = 0; i < invSize; i++){
-            if(i != arenasSlot && i != exitSlot){
+            if(!usedSlots.contains(i)){
                 inv.setItem(i, getBorderItem());
             }
         }
 
+        player.openInventory(inv);
+
     }
     public void createArenaPage (Player player, int page){
+        UUID playerId = player.getUniqueId();
+
+        // Defines Page size and button slots.
         int arenaPageSize = 45;
+        int backSlot = 0;
         int exitSlot = 40;
         int previousSlot = 36;
         int nextSlot = 44;
@@ -106,21 +132,27 @@ public class MenuManager {
 
         }
 
-        if (page > 1){
+
+
+
+        // Sets Page selector, Go back and Exit item.
+        if(amountOfPages() > 1){
             inv.setItem(nextSlot, getPageSelectorItem("Next"));
         }
-        // Sets pageselector and exit.
-        inv.setItem(previousSlot, getPageSelectorItem("Previous"));
-
+        // Probably don't need to check if amount of pages is more than 1 here, but it doesn't hurt to be sure.
+        if(amountOfPages() > 1 && currentPlayerPage.get(playerId) > 1){
+            inv.setItem(previousSlot, getPageSelectorItem("Previous"));
+        }
+        inv.setItem(backSlot, getGoBackItem());
         inv.setItem(exitSlot, getExitItem());
 
-        // Fills the menu with a borderitem.
+        // Fills the menu with borderItem.
         for(int j = 0; j < arenaPageSize; j++){
             if(!getNonBorderSlots().contains(j)){
                 inv.setItem(j, getBorderItem());
             }
         }
-
+        player.openInventory(inv);
     }
 
     private ItemStack getBorderItem(){
@@ -128,8 +160,8 @@ public class MenuManager {
         ItemStack border = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta borderMeta = border.getItemMeta();
         assert borderMeta != null;
-        borderMeta.setDisplayName("");
-        borderMeta.setLore(List.of(""));
+        borderMeta.setDisplayName(" ");
+        borderMeta.setLore(List.of(" "));
         border.setItemMeta(borderMeta);
 
         return border;
@@ -164,6 +196,16 @@ public class MenuManager {
                 return null;
         }
     }
+    private ItemStack getGoBackItem(){
+        ItemStack goBackItem = new ItemStack(Material.ARROW);
+        ItemMeta meta = goBackItem.getItemMeta();
+        assert meta != null;
+        meta.setDisplayName(ChatColor.AQUA + "Go back.");
+        meta.setLore(List.of(ChatColor.GRAY + "Returns to previous menu."));
+        goBackItem.setItemMeta(meta);
+
+        return goBackItem;
+    }
     private List<Integer> getNonBorderSlots (){
         List<Integer> slotIndexes = new ArrayList<>(Arrays.asList(36, 40, 44));
         slotIndexes.addAll(availableArenaSlots);
@@ -171,10 +213,16 @@ public class MenuManager {
 
         return slotIndexes;
     }
-    // Make a method that collects all the arenas, and returns 12 arenas for the createArenaPage method to use,
-    // if there are more than 12 arenas, it adds those to a list.
-
-    private List<String> arenas(){
+    private int amountOfPages(){
+        int totalAmountOfArenas = arenaManager.getArenaS().size();
+        return (totalAmountOfArenas + amountOfArenasPerPage - 1) / amountOfArenasPerPage;
+    }
+    //@Todo: Unsure if this method needs to be used.
+    /*
+     Make a method that collects all the arenas, and returns 12 arenas for the createArenaPage method to use,
+     if there are more than 12 arenas, it adds those to a list.
+    */
+    /*private List<String> arenas(){
         List<String> arenas = new ArrayList<>();
         int amountOfArenas = arenaManager.getArenaS().size();
 
@@ -193,16 +241,13 @@ public class MenuManager {
                 arenas.add(arenaManager.getArenaS().get(i));
             }
             // Fills surplusArenas Array with the remaining objects from getArenas() if there is any.
+            // There is only 12 arenas per page
             for(int i = 12; i < amountOfArenas; i++){
                 surplusArenas.add(arenaManager.getArenaS().get(i));
             }
         }
         return arenas;
     }
-
-    private int amountOfPages(){
-        int totalAmountOfArenas = arenaManager.getArenaS().size();
-        return (totalAmountOfArenas + amountOfArenasPerPage - 1) / amountOfArenasPerPage;
-    }
+    */
 
 }

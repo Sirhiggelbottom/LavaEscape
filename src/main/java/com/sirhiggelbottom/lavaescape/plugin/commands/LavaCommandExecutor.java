@@ -7,6 +7,7 @@ import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.GameManager;
+import com.sirhiggelbottom.lavaescape.plugin.managers.MenuManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -30,17 +31,18 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private final ConfigManager configManager;
     private final GameEvents gameEvents;
     private final WorldeditAPI worldeditAPI;
-
     private final GameManager gameManager;
+    private final MenuManager menuManager;
 
 
-    public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager, WorldeditAPI worldeditAPI, GameManager gameManager) {
+    public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager, WorldeditAPI worldeditAPI, GameManager gameManager, MenuManager menuManager) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.configManager = configManager;
         this.gameEvents = gameEvents;
         this.worldeditAPI = worldeditAPI;
         this.gameManager = gameManager;
+        this.menuManager = menuManager;
     }
 
     @Override
@@ -69,6 +71,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
          -> lwand
          -> join -> arenaName
          -> leave -> arenaName
+         -> menu
          */
         switch (args[0].toLowerCase()) {
             case "menu":
@@ -156,14 +159,12 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     //@ToDo This command should open a menu, by calling a menu based on if the sender is a admin/OP or not.
     private boolean handleMenuCommand(CommandSender sender) {
         if(!isSenderPlayer(sender)){
+            sender.sendMessage("Only players can execute this command.");
             return true;
         }
 
-        if(isSenderAdmin(sender)){
-            // Call menu for Admins/OP's
-            return true;
-        }
-        // Call menu for normal players.
+        menuManager.mainMenu(sender);
+
         return true;
     }
 

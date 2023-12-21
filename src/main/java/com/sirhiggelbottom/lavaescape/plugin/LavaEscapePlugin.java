@@ -7,6 +7,7 @@ import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.GameManager;
+import com.sirhiggelbottom.lavaescape.plugin.managers.MenuManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class LavaEscapePlugin extends JavaPlugin {
@@ -17,9 +18,8 @@ public class LavaEscapePlugin extends JavaPlugin {
     private GameEvents gameEvents;
     private WorldeditAPI worldeditAPI;
     private Arena arena;
-
     private GameManager gameManager;
-
+    private MenuManager menuManager;
     private boolean shouldContinueFilling = false;
 
 
@@ -31,7 +31,7 @@ public class LavaEscapePlugin extends JavaPlugin {
         // Initialize ArenaManager
         arenaManager = new ArenaManager(this, configManager, arena);
 
-        gameEvents = new GameEvents(this, arena, arenaManager, gameManager);
+        gameEvents = new GameEvents(this, arena, arenaManager, gameManager, menuManager);
 
         this.getServer().getPluginManager().registerEvents(gameEvents, this);
 
@@ -39,8 +39,10 @@ public class LavaEscapePlugin extends JavaPlugin {
 
         gameManager = new GameManager(arenaManager,configManager,worldeditAPI,this);
 
+        menuManager = new MenuManager(arenaManager);
+
         // Initialize command executor and bind commands
-        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI, gameManager);
+        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI, gameManager, menuManager);
 
         getCommand("lava").setExecutor(commandExecutor);
 
