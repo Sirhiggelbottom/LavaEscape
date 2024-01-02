@@ -22,15 +22,83 @@ public class MenuManager {
         private Map<UUID, Integer> currentPlayerPage;
         private Map<UUID, Integer> previousPlayerPage;
         private final int amountOfArenasPerPage;
+        private static List<String> pageNames;
+        private Map<String, Integer> pageList;
 
 
     public MenuManager(ArenaManager arenaManager) {
         this.arenaManager = arenaManager;
-        availableArenaSlots = new ArrayList<>(Arrays.asList(10, 12, 14, 16, 19, 21, 23, 25, 28, 30, 32, 34));
+        availableArenaSlots = new ArrayList<>(Arrays.asList(
+                10, 12, 14, 16, 19, 21, 23, 25, 28, 30, 32, 34));
         currentPlayerPage = new HashMap<>();
         previousPlayerPage = new HashMap<>();
         surplusArenas = new ArrayList<>();
         amountOfArenasPerPage = 12;
+        ArrayList<String> tempPageNames = new ArrayList<>(Arrays.asList(
+                "arenaName", "Config", "Set Arena", "Set Lobby", "Min Y", "Max Y",
+                "Min Players", "Max Players", "Rise time", "Grace time",
+                "Starter items", "Blacklisted blocks", "Delete arena"));
+        pageNames = Collections.unmodifiableList(tempPageNames);
+        pageList = new HashMap<>();
+    }
+
+    public static int calculatePageId(int arenaNumber, String itemName) {
+        final int firstArenaID = 4;
+        final int itemsPerArena = 13;
+
+        String[] itemNames = pageNames.toArray(new String[0]);
+
+        // Find the index of the item name
+        int itemIndex = -1;
+        for (int i = 0; i < itemNames.length; i++) {
+            if (itemNames[i].equals(itemName)) {
+                itemIndex = i;
+                break;
+            }
+        }
+
+        if (itemIndex == -1) {
+            // Item name not found
+            return -1;
+        }
+
+        // Calculate the page ID
+        return firstArenaID + (arenaNumber - 1) * itemsPerArena + itemIndex;
+    }
+    private void createPageList(){
+        List<String> arenas = arenaManager.getArenaS();
+        int arenaNumber = 1;
+        if(arenas.isEmpty()){
+           Bukkit.broadcastMessage("Arena list is empty, create an arena first.");
+            return;
+        }
+        for(String arena : arenas){
+            for (String itemName : pageNames) {
+                int pageId = calculatePageId(arenaNumber, itemName);
+                pageList.put(itemName, pageId);
+            }
+            arenaNumber++;
+        }
+    }
+    public void printPages(){
+        createPageList();
+
+        if(pageList.isEmpty()){
+            Bukkit.broadcastMessage("Pagelist is empty.");
+            return;
+        }
+
+        for(Map.Entry<String, Integer> entry: pageList.entrySet()){
+            String key = entry.getKey();
+            int value = entry.getValue();
+            Bukkit.broadcastMessage(key + " " + value);
+        }
+    }
+    //@Todo: Create a method that returns the contents of pageList, either as a key / value or only as a value.
+    public Map<String, Integer> getPageInfo(String key){
+        Map<String, Integer> pageInfo = new HashMap<>();
+
+        return pageInfo;
     }
     public void mainMenu(CommandSender sender){
         Player player = (Player) sender;
@@ -136,13 +204,16 @@ public class MenuManager {
 
 
         // Sets Page selector, Go back and Exit item.
+        // Probably don't need to check if amount of pages is more than 1 here, but it doesn't hurt to be sure.
         if(amountOfPages() > 1){
             inv.setItem(nextSlot, getPageSelectorItem("Next"));
-        }
-        // Probably don't need to check if amount of pages is more than 1 here, but it doesn't hurt to be sure.
-        if(amountOfPages() > 1 && currentPlayerPage.get(playerId) > 1){
+        } else if(amountOfPages() > 1 && currentPlayerPage.get(playerId) > 1){
             inv.setItem(previousSlot, getPageSelectorItem("Previous"));
+        } else {
+            inv.setItem(previousSlot, getBorderItem());
+            inv.setItem(nextSlot, getBorderItem());
         }
+
         inv.setItem(backSlot, getGoBackItem());
         inv.setItem(exitSlot, getExitItem());
 
@@ -154,7 +225,6 @@ public class MenuManager {
         }
         player.openInventory(inv);
     }
-
     private ItemStack getBorderItem(){
         // Creates a border item for the menu
         ItemStack border = new ItemStack(Material.RED_STAINED_GLASS_PANE);
@@ -207,7 +277,7 @@ public class MenuManager {
         return goBackItem;
     }
     private List<Integer> getNonBorderSlots (){
-        List<Integer> slotIndexes = new ArrayList<>(Arrays.asList(36, 40, 44));
+        List<Integer> slotIndexes = new ArrayList<>(Arrays.asList(0, 36, 40, 44));
         slotIndexes.addAll(availableArenaSlots);
         Collections.sort(slotIndexes);
 
@@ -217,6 +287,7 @@ public class MenuManager {
         int totalAmountOfArenas = arenaManager.getArenaS().size();
         return (totalAmountOfArenas + amountOfArenasPerPage - 1) / amountOfArenasPerPage;
     }
+
     //@Todo: Unsure if this method needs to be used.
     /*
      Make a method that collects all the arenas, and returns 12 arenas for the createArenaPage method to use,

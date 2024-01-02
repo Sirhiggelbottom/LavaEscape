@@ -23,3 +23,5 @@ permissions:
   lavaescape.modify:
     description: Allows modifying LavaEscape game settings
     default: op
+
+api-version: "1.13"
