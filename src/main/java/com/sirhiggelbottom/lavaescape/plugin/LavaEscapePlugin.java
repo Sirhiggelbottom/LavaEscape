@@ -4,10 +4,7 @@ import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.commands.LavaCommandExecutor;
 import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
-import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
-import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
-import com.sirhiggelbottom.lavaescape.plugin.managers.GameManager;
-import com.sirhiggelbottom.lavaescape.plugin.managers.MenuManager;
+import com.sirhiggelbottom.lavaescape.plugin.managers.*;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class LavaEscapePlugin extends JavaPlugin {
@@ -20,8 +17,10 @@ public class LavaEscapePlugin extends JavaPlugin {
     private Arena arena;
     private GameManager gameManager;
     private MenuManager menuManager;
+    private ArenaMenu arenaMenu;
     private boolean shouldContinueFilling = false;
 
+    //@Todo Create a method that takes the arenaName from the subpages and converts it to the correct format and name.
 
     @Override
     public void onEnable() {
@@ -35,14 +34,16 @@ public class LavaEscapePlugin extends JavaPlugin {
 
         gameManager = new GameManager(arenaManager,configManager,worldeditAPI,this);
 
-        menuManager = new MenuManager(arenaManager);
+        menuManager = new MenuManager(this , arenaManager);
 
-        gameEvents = new GameEvents(this, arena, arenaManager, gameManager, menuManager);
+        arenaMenu = new ArenaMenu(this, arenaManager, menuManager, arena);
+
+        gameEvents = new GameEvents(this, arena, arenaManager, gameManager, menuManager, arenaMenu, worldeditAPI, configManager);
 
         this.getServer().getPluginManager().registerEvents(gameEvents, this);
 
         // Initialize command executor and bind commands
-        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI, gameManager, menuManager);
+        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI, gameManager, menuManager, arenaMenu);
 
         getCommand("lava").setExecutor(commandExecutor);
 

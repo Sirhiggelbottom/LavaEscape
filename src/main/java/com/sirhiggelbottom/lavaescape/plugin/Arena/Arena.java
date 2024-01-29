@@ -87,6 +87,7 @@ public class Arena {
         // Additional logic for removing a player
 
     }
+
     public Set<Player> getPlayers() {
         return new HashSet<>(players);
     }

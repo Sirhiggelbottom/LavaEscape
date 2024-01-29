@@ -15,6 +15,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.Location;
 
 import java.util.*;
 import java.util.logging.Level;
@@ -29,6 +30,12 @@ public class ArenaManager {
     private final Arena arena;
     private HashMap<UUID, List<ItemStack>> playerItems;
     private HashMap<UUID, Integer> playerExp;
+    public Map<String, List<ItemStack>> startingItemsMap;
+    public Map<String, List<ItemStack>> blacklistedBlocksMap;
+    public Map<UUID, String> writtenArenaLocation1;
+    public Map<UUID, String> writtenArenaLocation2;
+    public Map<UUID, String> writtenLobbyLocation1;
+    public Map<UUID, String> writtenLobbyLocation2;
     public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager, Arena arena) {
         this.plugin = plugin;
         this.configManager = configManager;
@@ -38,6 +45,12 @@ public class ArenaManager {
         usedSpawns = new ArrayList<>();
         playerItems = new HashMap<>();
         playerExp = new HashMap<>();
+        startingItemsMap = new HashMap<>();
+        blacklistedBlocksMap = new HashMap<>();
+        writtenArenaLocation1 = new HashMap<>();
+        writtenArenaLocation2 = new HashMap<>();
+        writtenLobbyLocation1 = new HashMap<>();
+        writtenLobbyLocation2 = new HashMap<>();
         loadArenas();
     }
     private void loadArenas() {
@@ -85,13 +98,13 @@ public class ArenaManager {
     public void saveTheArena(Arena arena){
         String basePath = "arenas." + arena.getName();
         saveLocationToConfig(basePath + ".arena.pos1", arena.getArenaLoc1());
-        saveLocationToConfig(basePath + ".arena.pos2", arena.getArenaLoc2());
+        saveLocationToConfig(basePath + ".arena.pos2", arena.getArenaLoc2());;
         configManager.saveArenaConfig();
     }
     public void saveTheLobby(Arena arena){
         String basePath = "arenas." + arena.getName();
         saveLocationToConfig(basePath + ".lobby.pos1", arena.getLobbyLoc1());
-        saveLocationToConfig(basePath + ".lobby.pos2", arena.getLobbyLoc2());
+        saveLocationToConfig(basePath + ".lobby.pos2", arena.getLobbyLoc1());
         configManager.saveArenaConfig();
     }
     public void saveNewArena(Arena arena, String worldName){
@@ -102,6 +115,10 @@ public class ArenaManager {
         String timePath = basePath + ".timeValues";
         String modePath = basePath + ".mode";
         String itemPath = basePath + ".start-items";
+        String blockPath = basePath + ".blacklisted-blocks";
+
+        List<String> defaultBlacklistedBlocks = new ArrayList<>();
+        defaultBlacklistedBlocks.add("BEDROCK");
 
         // Creating a new arena section in arena.yml
         tryLogging(() -> configManager.getArenaConfig().createSection(basePath),
@@ -110,12 +127,6 @@ public class ArenaManager {
         // Saving the worldName to arena.yml
         tryLogging(()-> configManager.getArenaConfig().set(basePath + ".worldName", worldName),
         "an error occurred while saving the worldName in arena.yml");
-
-
-        /*// Sets the arena name
-        tryLogging(() -> configManager.getArenaConfig().set(basePath + ".name", arena.getName()),
-                "an error occurred while assigning a name to new arena in arena.yml");*/
-
 
         // Setting placeholder values for the locations and Y-levels to "none"
         tryLogging(() ->{
@@ -145,12 +156,328 @@ public class ArenaManager {
             configurationSection.set(itemPath + ".STONE_PICKAXE" , 1);
             configurationSection.set(itemPath + ".BAKED_POTATO" , 5);
 
+            configurationSection.set(blockPath, defaultBlacklistedBlocks);
 
-        }, "an error occurred while assigning placeholder values to new arena in arena.yml");
+        }, "An error occurred while assigning placeholder values to new arena in arena.yml");
 
         // Saving the arena config to arena.yml
         tryLogging(configManager::saveArenaConfig,
-                "an error occurred while saving the arena config to arena.yml");
+                "An error occurred while saving the arena config to arena.yml");
+
+    }
+    public void setMinY(String arenaName, int inputtedY_level, Player player){
+        String basePath = "arenas." + arenaName;
+        String yLevelPath = basePath + ".Y-levels.Ymin";
+        int y_level;
+
+        Clipboard clipboard = worldeditAPI.loadArenaSchematic(arenaName, player);
+        CuboidRegion region = (CuboidRegion) clipboard.getRegion();
+        BlockVector3 point = region.getMinimumPoint();
+        int minY = point.getY();
+
+        if(inputtedY_level < minY){
+            y_level = minY;
+            player.sendMessage("You have set the Ymin-level too low, Ymin has been set to: " + minY);
+        } else y_level = inputtedY_level;
+
+        tryLogging(()->{
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+            configurationSection.set(yLevelPath, y_level);
+            configManager.saveArenaConfig();
+            player.sendMessage("Min Y-level has been set to: " + y_level + ".");
+        }, "An error occurred while setting minY");
+
+    }
+    public void setMaxY(String arenaName, int inputtedY_level, Player player){
+        String basePath = "arenas." + arenaName;
+        String yLevelPath = basePath + ".Y-levels.Ymax";
+
+        int y_level;
+
+        Clipboard clipboard = worldeditAPI.loadArenaSchematic(arenaName, player);
+        CuboidRegion region = (CuboidRegion) clipboard.getRegion();
+        BlockVector3 point = region.getMaximumPoint();
+        int maxY = point.getY();
+
+        if(inputtedY_level > maxY){
+            y_level = maxY;
+            player.sendMessage("You have set the Ymax-level too high, Ymax has been set to: " + maxY);
+        } else y_level = inputtedY_level;
+
+        tryLogging(()->{
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+            configurationSection.set(yLevelPath, y_level);
+            configManager.saveArenaConfig();
+            player.sendMessage("Max Y-level has been set to: " + y_level + ".");
+        }, "An error occurred while setting maxY");
+
+    }
+    public void setStarterItems(String arenaName, String item, int amount, Player player){
+        String basePath = "arenas." + arenaName;
+        String itemPath = basePath + ".start-items.";
+
+        tryLogging(() -> {
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+            configurationSection.set(itemPath + item, amount);
+            configManager.saveArenaConfig();
+
+            updateInMemoryItemList(arenaName);
+
+            player.sendMessage("Added: " + amount + " " + item + " to starting items.");
+        }, "An error occurred while adding starter item to arena.yml");
+    }
+
+    private void updateInMemoryItemList(String arenaName){
+        List<ItemStack> updatedItems = getStarterItems(arenaName);
+        setStartingItems(arenaName, updatedItems);
+    }
+
+    private void setStartingItems(String arenaName, List<ItemStack> items){
+        this.startingItemsMap.put(arenaName, items);
+    }
+    public List<ItemStack> getStartingItems(String arenaName){
+        if(this.startingItemsMap.get(arenaName) == null){
+            return getStarterItems(arenaName);
+        } else return this.startingItemsMap.get(arenaName);
+    }
+
+    public List<ItemStack> getStarterItems(String arenaName){
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+        String basePath = "arenas." + arenaName + ".start-items";
+        ConfigurationSection config = arenaConfig.getConfigurationSection(basePath);
+        List<ItemStack> items = new ArrayList<>();
+        if(config != null){
+
+            Map<String, Object> objects = config.getValues(false);
+
+            for(Map.Entry<String, Object> entry : objects.entrySet()){
+                if(entry.getValue() instanceof Integer){
+                    Material material = Material.getMaterial(entry.getKey());
+                    if(material != null){
+                        ItemStack item = new ItemStack(material, (Integer) entry.getValue());
+                        items.add(item);
+                    }
+                }
+            }
+        }
+
+        return items;
+    }
+
+    public void deleteStarterItem(String arenaName, String item, Player player){
+        String basePath = "arenas." + arenaName;
+        String itemPath = basePath + ".start-items";
+
+
+
+
+        tryLogging(() -> {
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+            Map<String, Object> startItems = configManager.getArenaConfig().getConfigurationSection(itemPath).getValues(false);
+
+            String cleanedItem = parseDeleteItem(item);
+
+            if(startItems.containsKey(cleanedItem)){
+                startItems.remove(cleanedItem);
+                player.sendMessage("Deleted: " + cleanedItem + " from starting items.");
+            }
+
+
+            configurationSection.set(itemPath, null);
+
+            configurationSection.createSection(itemPath, startItems);
+
+            configManager.saveArenaConfig();
+
+            updateInMemoryItemList(arenaName);
+
+        }, "An error occurred while removing starter item from arena.yml");
+    }
+
+    private String parseDeleteItem(String item){
+        String[] rawString = item.split("\\{");
+        String uncleanString = rawString[1];
+        String[] cleanerStringArr = uncleanString.split("x");
+        String cleanerString = cleanerStringArr[0];
+
+        return cleanerString.replace(" ", "");
+    }
+
+    public void setBlacklistedBlocks(String arenaName, String block, Player player){
+        String basePath = "arenas." + arenaName;
+        String blockPath = basePath + ".blacklisted-blocks";
+
+        if(block.contains("minecraft")){
+            String[] blockarr = block.split(":");
+            block = blockarr[1].toUpperCase();
+        } else if (block.contains("ItemStack")) {
+            block = parseDeleteItem(block);
+        }
+
+        String finalBlock = block;
+
+        List<String> compareBlacklistedBlocks = new ArrayList<>();
+        List<ItemStack> oldBlacklistedBlocks = getBlacklistedBlocks(arenaName);
+        String itemName;
+        for(ItemStack item : oldBlacklistedBlocks){
+            itemName = item.toString();
+
+            if(itemName.contains("ItemStack")){
+                itemName = parseDeleteItem(itemName);
+            }
+            else if(itemName.contains("minecraft")){
+
+                String[] blockarr = itemName.split(":");
+                itemName = blockarr[1].toUpperCase();
+
+            }
+
+            compareBlacklistedBlocks.add(itemName);
+
+        }
+
+        List<String> newBlacklistedBlocks = new ArrayList<>(compareBlacklistedBlocks);
+        newBlacklistedBlocks.add(finalBlock);
+
+        tryLogging(() ->{
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+            configurationSection.set(blockPath, null);
+            configurationSection.set(blockPath, newBlacklistedBlocks);
+
+            configManager.saveArenaConfig();
+
+            updateBlacklistedBlocks(arenaName);
+
+            player.sendMessage("Added: " + finalBlock + " to blacklisted blocks.");
+        }, "An error occurred while adding blacklisted block to arena.yml");
+    }
+
+    private void updateBlacklistedBlocks(String arenaName){
+        List<ItemStack> updatedBlacklist = getBlacklistedBlocks(arenaName);
+        blacklistedBlocksMap.put(arenaName, updatedBlacklist);
+    }
+
+    public List<ItemStack> getBlacklistedBlocks(String arenaName) {
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+        String basePath = "arenas." + arenaName + ".blacklisted-blocks";
+        List<String> blockNames = arenaConfig.getStringList(basePath);
+        List<ItemStack> blocks = new ArrayList<>();
+
+        if (blockNames.isEmpty()) {
+            Bukkit.broadcastMessage("Couldn't find the blacklisted blocks list or the list is empty.");
+            return null;
+        }
+
+        for (String blockName : blockNames) {
+
+            if(blockName.contains("minecraft")){
+                String[] blocknameArr = blockName.split(":");
+                blockName = blocknameArr[1].toUpperCase();
+            } else if (blockName.contains("ItemStack")) {
+                blockName = parseDeleteItem(blockName);
+            }
+
+            Material material = Material.getMaterial(blockName);
+            if (material != null) {
+                ItemStack block = new ItemStack(material);
+                blocks.add(block);
+            } else {
+                Bukkit.broadcastMessage("Invalid material name in blacklisted blocks: " + blockName);
+            }
+        }
+        return blocks;
+    }
+
+    public void deleteBlacklistedItem(String arenaName, String block, Player player){
+        String basePath = "arenas." + arenaName + ".blacklisted-blocks";
+
+        tryLogging(() -> {
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+            // Map<String, Object> blacklistedBlocks = configManager.getArenaConfig().getConfigurationSection(basePath).getValues(false);
+            List<String> blacklistedBlocks = configManager.getArenaConfig().getStringList(basePath);
+
+            String cleanedItem = parseDeleteItem(block);
+
+            if(blacklistedBlocks.contains(cleanedItem)){
+                blacklistedBlocks.remove(cleanedItem);
+                player.sendMessage("Deleted: " + cleanedItem + " from blacklisted blocks.");
+            }
+
+            configurationSection.set(basePath, null);
+
+            configurationSection.set(basePath, blacklistedBlocks);
+
+            configManager.saveArenaConfig();
+
+            updateBlacklistedBlocks(arenaName);
+
+        }, "An error occurred while removing blacklisted block from arena.yml");
+
+    }
+
+    public void setMinPlayers(String arenaName, int minPlayers) {
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName() + ".players";
+        tryLogging(()->{
+
+            configManager.getArenaConfig().set(basePath + ".minPlayers", minPlayers);
+            configManager.saveArenaConfig();
+
+        }, "An error occurred while setting the minimum amount of players.");
+
+    }
+    public void setMaxPlayers(String arenaName, int maxPlayers) {
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName() + ".players";
+        configManager.getArenaConfig().set(basePath + ".maxPlayers", maxPlayers);
+        configManager.saveArenaConfig();
+    }
+    public void setGracePeriod(String arenaName, int seconds){
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName() + ".timeValues";
+
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        configurationSection.set(basePath + ".gracePeriod", seconds);
+
+        configManager.saveArenaConfig();
+    }
+    public void setRiseTime(String arenaName, int seconds){
+        Arena arena = getArena(arenaName);
+        String basePath = "arenas." + arena.getName() + ".timeValues";
+
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        configurationSection.set(basePath + ".lavadelay", seconds);
+
+        configManager.saveArenaConfig();
+    }
+    public void setPvpMode(boolean value){
+        String mode = String.valueOf(value);
+        String basePath = "Global settings.";
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+        String fullPath = basePath + "PvPMode";
+        configurationSection.set(fullPath, mode);
+
+        configManager.saveArenaConfig();
+    }
+
+
+    public String getPvpMode(){
+        String basePath = "Global settings.";
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        Object pvpMode = configurationSection.get(basePath + "PvPMode.");
+
+        if(pvpMode == null){
+            return "true";
+        }
+        if(!pvpMode.toString().equalsIgnoreCase("true") || !pvpMode.toString().equalsIgnoreCase("false")){
+            return "true";
+        } else return pvpMode.toString();
 
     }
     public void tryLogging(Runnable action, String errorMessage){
@@ -163,6 +490,7 @@ public class ArenaManager {
     public void deleteArena(CommandSender sender, String arenaName){
 
         if(!(arenaNames.containsKey(arenaName))){
+            sender.sendMessage("This arena: " + arenaName +  " doesn't exist.");
             return;
         }
 
@@ -285,26 +613,11 @@ public class ArenaManager {
     public int getPlayerAmountInArena(String arenaName){
         return getPlayersInArena(arenaName).size();
     }
-    // Set minimum players for an arena
-    public void setMinPlayers(String arenaName, int minPlayers) {
-        Arena arena = getArena(arenaName);
-        String basePath = "arenas." + arena.getName() + ".players";
-        configManager.getArenaConfig().set(basePath + ".minPlayers", minPlayers);
-        configManager.saveArenaConfig();
-    }
-    // Get minimum players for an arena
     public int getMinPlayers(String arenaName) {
         Arena arena = getArena(arenaName);
         String basePath = "arenas." + arena.getName() + ".players";
         return configManager.getArenaConfig().getInt(basePath + ".minPlayers", 2); // Default to 2
     }
-    public void setMaxPlayers(String arenaName, int maxPlayers) {
-        Arena arena = getArena(arenaName);
-        String basePath = "arenas." + arena.getName() + ".players";
-        configManager.getArenaConfig().set(basePath + ".maxPlayers", maxPlayers);
-        configManager.saveArenaConfig();
-    }
-    // Get minimum players for an arena
     public int getMaxPlayers(String arenaName) {
         Arena arena = getArena(arenaName);
         String basePath = "arenas." + arena.getName() + ".players";
@@ -418,6 +731,7 @@ public class ArenaManager {
         }
         return spawnPoints;
     }
+    // Deprecated
     public boolean setMinYLevel(Arena arena, int i, Player player){
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
@@ -439,6 +753,7 @@ public class ArenaManager {
         }
         return true;
     }
+    // Deprecated
     public boolean setMaxYLevel(Arena arena, int i,Player player){
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
@@ -448,6 +763,7 @@ public class ArenaManager {
         player.sendMessage("Ymax-level set to Ylevel: " + i);
         return true;
     }
+
     public List<Location> findSpawnPoints(String arenaName, CommandSender sender) {
         Arena arena = getArena(arenaName);
 
@@ -476,11 +792,17 @@ public class ArenaManager {
 
 
 
-        // Adjust the volume for the Y-level range
+        /*// Adjust the volume for the Y-level range
         int height = Ymax - Ymin + 1;
         int length = region.getLength();
         int width = region.getWidth();
-        int searchSpaceVolume = length * width * height; // Adjusted volume for Y-range
+        int searchSpaceVolume = length * width * height; // Adjusted volume for Y-range*/
+
+        int height = Ymax - Ymin + 1;
+        int length = region.getLength();
+        int width = region.getWidth();
+        int searchSpaceVolume = length * width * height;
+
 
         sender.sendMessage("Number of blocks to iterate through: " + searchSpaceVolume);
 
@@ -639,24 +961,6 @@ public class ArenaManager {
         configManager.saveArenaConfig();
 
     }
-    public void setGracePeriod(String arenaName, int seconds){
-        Arena arena = getArena(arenaName);
-        String basePath = "arenas." + arena.getName();
-
-        ConfigurationSection configurationSection = configManager.getArenaConfig();
-        configurationSection.set(basePath + ".gracePeriod", seconds);
-
-        configManager.saveArenaConfig();
-    }
-    public void setLavaDelay (String arenaName, int seconds){
-        Arena arena = getArena(arenaName);
-        String basePath = "arenas." + arena.getName();
-
-        ConfigurationSection configurationSection = configManager.getArenaConfig();
-        configurationSection.set(basePath + ".lavadelay", seconds);
-
-        configManager.saveArenaConfig();
-    }
     public void storeAndClearPlayersInventory(String arenaName) {
 
         for(Player player : getPlayersInArena(arenaName)){
@@ -707,39 +1011,111 @@ public class ArenaManager {
 
 
     }
-    private List<ItemStack> parseStartingItems(String arenaName){
+    public String getConfigValue(String arenaName, String configItem){
+        String configItemWithPrefix = "." + configItem;
+        String basePath = "arenas." + arenaName + configItemWithPrefix;
+
+        return configManager.getArenaConfig().getString(basePath, "none");
+    }
+
+    /*public List<ItemStack> getBlacklistedBlocks(String arenaName){
         FileConfiguration arenaConfig = configManager.getArenaConfig();
-        String basePath = "arenas." + arenaName + ".start-items";
-        ConfigurationSection config = arenaConfig.getConfigurationSection(basePath);
-        List<ItemStack> items = new ArrayList<>();
-        if(config != null){
+        String basePath = "arenas." + arenaName + ".blacklisted-blocks";
+        List<String> blockNames = arenaConfig.getStringList(basePath);
+        List<ItemStack> blocks = new ArrayList<>();
 
-            Map<String, Object> objects = config.getValues(false);
+        Bukkit.broadcastMessage("Blacklisted blocks path is: " + basePath);
 
-            for(Map.Entry<String, Object> entry : objects.entrySet()){
-                if(entry.getValue() instanceof Integer){
-                    Material material = Material.getMaterial(entry.getKey());
-                    if(material != null){
-                        ItemStack item = new ItemStack(material, (Integer) entry.getValue());
-                        items.add(item);
-                    }
-                }
+        if(blockNames.isEmpty()){
+            Bukkit.broadcastMessage("Couldn't find the blacklisted blocks name list.");
+            return null;
+        }
+
+        for(String blockName : blockNames){
+            Material material = Material.getMaterial(blockName);
+            if(material != null){
+                ItemStack block = new ItemStack(material);
+                blocks.add(block);
             }
         }
 
-        return items;
+        return blocks;
     }
+*/
+
+    /*public void reloadArenaYml(String arenaName){
+        String blockPath = "arenas." + arenaName + ".blacklisted-blocks";
+
+        List<String> defaultBlacklistedBlocks = new ArrayList<>();
+        defaultBlacklistedBlocks.add("BEDROCK");
+        tryLogging(() ->{
+
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+            configurationSection.set(blockPath, defaultBlacklistedBlocks);
+
+            configManager.saveArenaConfig();
+        }, "An error occurred while reloading blacklisted blocks for: " + arenaName +  " in arena.yml");
+
+
+    }*/
+
+
+
     public void giveStartingItems(String arenaName){
 
-        List<ItemStack> startingItems = parseStartingItems(arenaName);
+        List<ItemStack> startingItems = getStarterItems(arenaName);
         for(Player player : getPlayersInArena(arenaName)){
             for(ItemStack item : startingItems){
                 player.getInventory().addItem(item);
             }
         }
     }
+    public String getArenaLoc1(String arenaName){
+        Arena thisArena = getArena(arenaName);
 
+        if(thisArena == null) return null;
+
+        if(thisArena.getArenaLoc1() != null){
+            return thisArena.getArenaLoc1().toString();
+        } else return null;
+
+    }
+    public String getArenaLoc2(String arenaName){
+        Arena thisArena = getArena(arenaName);
+
+        if(thisArena == null) return null;
+
+        if (thisArena.getArenaLoc2() != null) {
+            return thisArena.getArenaLoc2().toString();
+        } else return null;
+    }
+    public String getLobbyLoc1(String arenaName){
+        Arena thisArena = getArena(arenaName);
+
+        if(thisArena == null) return null;
+
+        if (thisArena.getLobbyLoc1() != null) {
+            return thisArena.getLobbyLoc1().toString();
+        } else return null;
+    }
+    public String getLobbyLoc2(String arenaName){
+        Arena thisArena = getArena(arenaName);
+
+        if(thisArena == null) return null;
+
+        if (thisArena.getLobbyLoc2() != null) {
+            return thisArena.getLobbyLoc2().toString();
+        } else return null;
+    }
+    public Integer getPlayers(String arenaName){
+        Arena currentArena = getArena(arenaName);
+
+        return currentArena.getPlayers().size();
+    }
+    public String getGameStage(String arenaName){
+        Arena arena = getArena(arenaName);
+        return arena.getGameState().toString();
+    }
 }
 
 // Additional methods and utilities as necessary
-

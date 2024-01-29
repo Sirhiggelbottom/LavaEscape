@@ -4,10 +4,8 @@ import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
-import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
-import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
-import com.sirhiggelbottom.lavaescape.plugin.managers.GameManager;
-import com.sirhiggelbottom.lavaescape.plugin.managers.MenuManager;
+import com.sirhiggelbottom.lavaescape.plugin.managers.*;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -33,9 +31,10 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private final WorldeditAPI worldeditAPI;
     private final GameManager gameManager;
     private final MenuManager menuManager;
+    private final ArenaMenu arenaMenu;
 
 
-    public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager, WorldeditAPI worldeditAPI, GameManager gameManager, MenuManager menuManager) {
+    public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager, WorldeditAPI worldeditAPI, GameManager gameManager, MenuManager menuManager, ArenaMenu arenaMenu) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.configManager = configManager;
@@ -43,6 +42,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         this.worldeditAPI = worldeditAPI;
         this.gameManager = gameManager;
         this.menuManager = menuManager;
+        this.arenaMenu = arenaMenu;
     }
 
     @Override
@@ -76,6 +76,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase()) {
             case "menu":
                 return handleMenuCommand(sender);
+            /*case "testpage":
+                return handleTestPageCommand(sender);*/
             case "arena":
                 switch(args[2].toLowerCase()){
                     case "setworld":
@@ -131,8 +133,10 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                                     default:
                                         break;
                                 }
-                        }break;
-                }break;
+                        }
+                        break;
+                }
+                break;
             case "create":
                 return handleCreateCommand(sender, args);
 
@@ -156,6 +160,12 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                 return false;
         }return true;
     }
+
+    /*private boolean handleTestPageCommand(CommandSender sender) {
+        menuManager.createNewArena(sender);
+        return true;
+    }*/
+
     //@ToDo This command should open a menu, by calling a menu based on if the sender is a admin/OP or not.
     private boolean handleMenuCommand(CommandSender sender) {
         if(!isSenderPlayer(sender)){
@@ -163,7 +173,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        menuManager.mainMenu(sender);
+        Player player = (Player) sender;
+        player.openInventory(arenaMenu.mainMenu(player));
 
         return true;
     }
@@ -203,7 +214,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         String arenaName = args[1];
         int seconds = argToInt(sender, args[4]);
 
-        arenaManager.setLavaDelay(arenaName, seconds);
+        arenaManager.setRiseTime(arenaName, seconds);
         return true;
     }
 
@@ -375,7 +386,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         ItemMeta meta = wand.getItemMeta();
         if (meta != null) {
             meta.setDisplayName("Wand");
-            meta.setLore(Collections.singletonList("LavaEscape Wand"));
+            meta.setLore(List.of(ChatColor.GRAY + "LavaEscape Wand"));
             wand.setItemMeta(meta);
         }
         player.getInventory().addItem(wand);
@@ -412,15 +423,15 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
 
         // Example method calls to get selected positions - these methods need to be implemented
         UUID playerId = player.getUniqueId();
-        Location pos1 = gameEvents.getFirstPosition(playerId);
-        Location pos2 = gameEvents.getSecondPosition(playerId);
+        Location pos1 = gameEvents.getFirstArenaPosition(playerId);
+        Location pos2 = gameEvents.getSecondArenaPosition(playerId);
 
         if (pos1 == null || pos2 == null) {
             player.sendMessage("You must first select two positions with the wand.");
             return true;
         }
 
-        switch (args[4].toLowerCase()) {
+        /*switch (args[4].toLowerCase()) {
             case "arena":
                 arena.setArenaLocations(pos1 , pos2);
                 arenaManager.saveTheArena(arena);
@@ -439,10 +450,10 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             default:
                 player.sendMessage("Invalid area type. Use 'arena' or 'lobby'.");
                 return false;
-        }
+        }*/
 
 
-
+        return false;
     }
 
     // Implementation for /Lava <name> minplayers <int> and /Lava <name> maxplayers <int>

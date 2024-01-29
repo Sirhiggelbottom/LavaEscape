@@ -5,14 +5,16 @@ import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ConfigManager;
-
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 import com.sk89q.worldedit.extent.clipboard.BlockArrayClipboard;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
-import com.sk89q.worldedit.extent.clipboard.io.*;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormats;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardReader;
+import com.sk89q.worldedit.extent.clipboard.io.ClipboardWriter;
 import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
 import com.sk89q.worldedit.function.operation.Operation;
 import com.sk89q.worldedit.function.operation.Operations;
@@ -30,6 +32,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.UUID;
 
 
 public class WorldeditAPI {
@@ -46,28 +49,21 @@ public class WorldeditAPI {
     }
     public void saveArenaRegionAsSchematic(Player player, String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
+        UUID playerId = player.getUniqueId();
 
         if (arena == null || arena.getArenaLoc1() == null || arena.getArenaLoc2() == null) {
             player.sendMessage("Arena locations not set or arena does not exist.");
             return;
         }
 
-
         Location pos1 = arena.getArenaLoc1();
         Location pos2 = arena.getArenaLoc2();
-
-
-
         WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
-
-
 
         if (worldEdit == null) {
             player.sendMessage("WorldEdit not found.");
             return;
         }
-
-
 
         // Set or create shared directory for all the arenas
         File schematicDirs = getDirectories();
@@ -76,8 +72,6 @@ public class WorldeditAPI {
             return;
         }
 
-
-
         // Set or create directory for specific arena
         File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
         if (!schematicDir.exists() && !schematicDir.mkdirs()) {
@@ -85,10 +79,7 @@ public class WorldeditAPI {
             return;
         }
 
-
-
         File schematicFile = new File(schematicDir, arenaName + ".schem");
-
 
         World world = loadWorld(arenaName);
 
@@ -100,8 +91,6 @@ public class WorldeditAPI {
 
             CuboidRegion region = new CuboidRegion(world, point1, point2);
             Clipboard clipboard = new BlockArrayClipboard(region);
-
-
 
             ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
                     world, region, clipboard, region.getMinimumPoint()
@@ -131,6 +120,7 @@ public class WorldeditAPI {
 
     public void saveLobbyRegionAsSchematic(Player player, String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
+        UUID playerId = player.getUniqueId();
 
         if (arena == null || arena.getLobbyLoc1() == null || arena.getLobbyLoc2() == null) {
             player.sendMessage("Lobby locations not set or arena does not exist.");

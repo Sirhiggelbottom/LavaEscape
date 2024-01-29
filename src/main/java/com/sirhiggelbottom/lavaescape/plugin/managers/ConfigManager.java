@@ -125,7 +125,7 @@ public class ConfigManager {
         saveConfig();
     }
 
-    /*public List<ItemStack> getStartingItems() {
+    /*public List<ItemStack> getStarterItems() {
         List<Map<String, Object>> itemsList = (List<Map<String, Object>>) config.getList("game-settings.start-items");
         return parseItemsList(itemsList);
     }*/
