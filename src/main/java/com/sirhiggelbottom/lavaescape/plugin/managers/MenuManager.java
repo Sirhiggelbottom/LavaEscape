@@ -1,5 +1,6 @@
 package com.sirhiggelbottom.lavaescape.plugin.managers;
 
+import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sk89q.worldedit.world.block.BlockType;
 import com.sk89q.worldedit.world.block.BlockTypes;
@@ -33,9 +34,6 @@ public class MenuManager {
         public Map<UUID, String> writtenGraceTimeValue;
         public Map<UUID, String> writtenStarterItemsValue;
         public Map<UUID, String> writtenBlacklistetBlocksValue;
-
-
-
         public List<Map<UUID, String>> writtenAnvilItemList;
 
     public MenuManager(LavaEscapePlugin plugin , ArenaManager arenaManager) {
@@ -753,28 +751,37 @@ public class MenuManager {
     }
 
     public ItemStack getNormalModeItem(String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
         ItemStack normalModeItem = new ItemStack(Material.CAMPFIRE);
         ItemMeta meta = normalModeItem.getItemMeta();
+        String loreInfo;
         if(meta == null) return null;
 
-        String loreInfo = arenaManager.getConfigValue(arenaName, "mode");
+        if(arena.getCurrentGameMode() == null){
+            loreInfo = arenaManager.getGameMode(arenaName);
+        } else loreInfo = arena.getCurrentGameMode();
 
-        meta.setDisplayName(ChatColor.DARK_AQUA + "Normal mode");
-        meta.setLore(List.of(ChatColor.GRAY + "Sets the arena mode to normal. \nCurrent mode: " + loreInfo));
+
+        meta.setDisplayName(ChatColor.DARK_AQUA + "normal mode");
+        meta.setLore(Arrays.asList(ChatColor.GRAY + "Sets the arena mode to normal.", "Current mode: " + loreInfo));
         normalModeItem.setItemMeta(meta);
 
         return normalModeItem;
     }
 
     public ItemStack getCompModeItem(String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
         ItemStack  compModeItem = new ItemStack(Material.SOUL_CAMPFIRE);
         ItemMeta meta = compModeItem.getItemMeta();
+        String loreInfo;
         if(meta == null) return null;
 
-        String loreInfo = arenaManager.getConfigValue(arenaName, "mode");
+        if(arena.getCurrentGameMode() == null){
+            loreInfo = arenaManager.getGameMode(arenaName);
+        } else loreInfo = arena.getCurrentGameMode();
 
         meta.setDisplayName(ChatColor.DARK_RED + "Competition mode");
-        meta.setLore(List.of(ChatColor.GRAY + "Sets the arena mode to competition.\nCurrent mode: " + loreInfo));
+        meta.setLore(Arrays.asList(ChatColor.GRAY + "Sets the arena mode to competition.", "Current mode: " + loreInfo));
         compModeItem.setItemMeta(meta);
 
         return compModeItem;
@@ -977,8 +984,12 @@ public class MenuManager {
         ItemStack switchPvPModeItem = new ItemStack(Material.STONE_SWORD);
         ItemMeta meta = switchPvPModeItem.getItemMeta();
         if(meta == null) return null;
+
+        boolean infoBool = arenaManager.getCurrentPvPMode();
+
         meta.setDisplayName(ChatColor.GREEN + "Switch global PvP mode");
-        meta.setLore(List.of(ChatColor.GRAY + "Turns global PvP off or on."));
+        // meta.setLore(List.of(ChatColor.GRAY + "Turns global PvP off or on."));
+        meta.setLore(Arrays.asList(ChatColor.GRAY + "Turns global PvP off or on.", ChatColor.GRAY + "Current mode: " + infoBool));
         switchPvPModeItem.setItemMeta(meta);
 
         return switchPvPModeItem;
@@ -1166,15 +1177,15 @@ public class MenuManager {
         return tryAgainItem;
     }
 
-    public ItemStack getArenaItem(String arena){
+    public ItemStack getArenaItem(String arenaName){
         ItemStack arenaItem = new ItemStack(Material.LAVA_BUCKET);
         ItemMeta meta = arenaItem.getItemMeta();
         if(meta == null) return null;
-        meta.setDisplayName(ChatColor.RED + arena);
+        meta.setDisplayName(ChatColor.RED + arenaName);
 
         ArrayList<String> lore = new ArrayList<>();
-        lore.add(ChatColor.GRAY + "Players: " + arenaManager.getPlayers(arena) + "/" + arenaManager.getMaxPlayers(arena));
-        lore.add(ChatColor.GRAY + "Current gamestage: " + arenaManager.getGameStage(arena));
+        lore.add(ChatColor.GRAY + "Players: " + arenaManager.getPlayers(arenaName) + "/" + arenaManager.getMaxPlayers(arenaName));
+        lore.add(ChatColor.GRAY + "Current gamestage: " + arenaManager.getGameStage(arenaName));
         meta.setLore(lore);
 
         arenaItem.setItemMeta(meta);
@@ -1231,6 +1242,31 @@ public class MenuManager {
         return newStarterItem;
 
     }
+
+    public ItemStack getStartItem(String arenaName){
+        ItemStack startItem = new ItemStack(Material.PISTON);
+        ItemMeta meta = startItem.getItemMeta();
+        if(meta == null) return null;
+
+        meta.setDisplayName(ChatColor.GREEN + "Start match");
+        meta.setLore(Arrays.asList(ChatColor.GRAY + "Starts a match in the selected arena.", ChatColor.GRAY + "Players: " + arenaManager.getPlayers(arenaName) + "/" + arenaManager.getMaxPlayers(arenaName)));
+        startItem.setItemMeta(meta);
+
+        return startItem;
+    }
+
+    public ItemStack getRestartItem(String arenaName){
+        ItemStack restartItem = new ItemStack(Material.STICKY_PISTON);
+        ItemMeta meta = restartItem.getItemMeta();
+        if(meta == null) return null;
+
+        meta.setDisplayName(ChatColor.GREEN + "Restart match");
+        meta.setLore(List.of(ChatColor.GRAY + "Restarts the match."));
+        restartItem.setItemMeta(meta);
+
+        return restartItem;
+    }
+
     public int parseValueToInt(Player player){
         UUID playerId = player.getUniqueId();
         String rawValue;

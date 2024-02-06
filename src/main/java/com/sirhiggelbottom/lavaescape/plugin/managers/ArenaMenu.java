@@ -181,20 +181,22 @@ public class ArenaMenu {
 
     private Inventory createArenaPage(String arenaName){
         int arenaPageSize = 27;
+        int backSlot = 0;
         int joinSlot = 10;
         int configSlot = 12;
-        int normalSlot = 14;
-        int compSlot = 16;
-        int backSlot = 0;
+        int startSlot = 14;
+        int restartSlot = 15;
+        int resetArenaSlot = 16;
         int exitSlot = 18;
         Inventory inv = Bukkit.createInventory(null, arenaPageSize, arenaName);
 
-        List<Integer> nonBoarderItems = new ArrayList<>(Arrays.asList(joinSlot, configSlot, normalSlot, compSlot, backSlot, exitSlot));
+        List<Integer> nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, joinSlot, configSlot, startSlot, restartSlot, resetArenaSlot, exitSlot));
 
         inv.setItem(joinSlot, menuManager.getJoinItem());
         inv.setItem(configSlot, menuManager.getConfigItem());
-        inv.setItem(normalSlot, menuManager.getNormalModeItem(arenaName));
-        inv.setItem(compSlot, menuManager.getCompModeItem(arenaName));
+        inv.setItem(startSlot, menuManager.getStartItem(arenaName));
+        inv.setItem(restartSlot, menuManager.getRestartItem(arenaName));
+        inv.setItem(resetArenaSlot, menuManager.getResetArenaItem());
         inv.setItem(backSlot, menuManager.getGoBackItem());
         inv.setItem(exitSlot, menuManager.getExitItem());
 
@@ -227,6 +229,24 @@ public class ArenaMenu {
             if(subPage != ArenaSubPage.ARENA || !arenaAnvilSubPage.contains(subPage.toString())){
                 subPages.put(subPage, createSubPage(null, subPage, arena));
             }
+        }
+    }
+    public void reloadPage(Player player, String subPage){
+        UUID uniquePlayer = player.getUniqueId();
+        Arena arena = currentArenaView.get(uniquePlayer);
+
+        if(arena == null){
+            return;
+        }
+
+        ArenaSubPage subpage = ArenaSubPage.valueOf(subPage.toUpperCase());
+
+        try {
+            player.openInventory(Objects.requireNonNull(createSubPage(player, subpage, arena.getName())));
+            //player.openInventory(getSubPageInv(subpage));
+
+        } catch (IllegalArgumentException e){
+            Bukkit.broadcastMessage("Error: " + e);
         }
     }
 
@@ -278,24 +298,26 @@ public class ArenaMenu {
                 // Add code for CONFIG page.
                 arenaPageSize = 54;
                 int setArenaSlot = 10;
-                int setLobbySlot = 12;
-                int minPlayersSlot = 14;
-                int maxPlayersSlot = 16;
-                int minYSlot = 20;
-                int maxYSlot = 22;
-                int generateSpawnsSlot = 24;
+                int setLobbySlot = 11;
+                int generateSpawnsSlot = 13;
+                int minYSlot = 15;
+                int maxYSlot = 16;
+                int normalSlot = 21;
+                int compSlot = 23;
                 int riseTimeSlot = 28;
-                int graceTimeSlot = 30;
-                int resetArenaSlot = 32;
-                int deleteArenaSlot = 34;
-                int starterItemsSlot = 38;
-                int blacklistedBlocksSlot = 42;
+                int graceTimeSlot = 29;
+                int deleteArenaSlot = 31;
+                int minPlayersSlot = 33;
+                int maxPlayersSlot = 34;
+                int starterItemsSlot = 39;
+                int blacklistedBlocksSlot = 41;
                 int exitSlot = 45;
+
+                int resetArenaSlot = 32;
                 result = Bukkit.createInventory(null, arenaPageSize, arenaName + " Config");
 
-                nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, setArenaSlot, setLobbySlot, minPlayersSlot, maxPlayersSlot, minYSlot, maxYSlot,
-                        generateSpawnsSlot, riseTimeSlot, graceTimeSlot, resetArenaSlot, deleteArenaSlot, starterItemsSlot, blacklistedBlocksSlot, exitSlot));
-
+                nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, setArenaSlot, setLobbySlot, generateSpawnsSlot, minYSlot, maxYSlot, normalSlot, compSlot,
+                        riseTimeSlot, graceTimeSlot, deleteArenaSlot, minPlayersSlot, maxPlayersSlot, starterItemsSlot, blacklistedBlocksSlot, exitSlot));
 
                 result.setItem(backSlot, menuManager.getGoBackItem());
                 result.setItem(setArenaSlot, menuManager.getSetArenaItem(arenaName));
@@ -307,7 +329,9 @@ public class ArenaMenu {
                 result.setItem(generateSpawnsSlot, menuManager.getGenerateSpawnsItem(arenaName));
                 result.setItem(riseTimeSlot, menuManager.getRiseTimeItem(arenaName));
                 result.setItem(graceTimeSlot, menuManager.getGraceTimeItem(arenaName));
-                result.setItem(resetArenaSlot, menuManager.getResetArenaItem());
+                result.setItem(normalSlot, menuManager.getNormalModeItem(arenaName));
+                result.setItem(compSlot, menuManager.getCompModeItem(arenaName));
+                /*result.setItem(resetArenaSlot, menuManager.getResetArenaItem());*/
                 result.setItem(deleteArenaSlot, menuManager.getDeleteArenaItem());
                 result.setItem(starterItemsSlot, menuManager.getStarterItemsItem());
                 result.setItem(blacklistedBlocksSlot, menuManager.getBlacklistedBlocksItem());

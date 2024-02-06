@@ -36,6 +36,8 @@ public class ArenaManager {
     public Map<UUID, String> writtenArenaLocation2;
     public Map<UUID, String> writtenLobbyLocation1;
     public Map<UUID, String> writtenLobbyLocation2;
+    public String currentGameMode;
+    private boolean globalPvPMode;
     public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager, Arena arena) {
         this.plugin = plugin;
         this.configManager = configManager;
@@ -51,6 +53,7 @@ public class ArenaManager {
         writtenArenaLocation2 = new HashMap<>();
         writtenLobbyLocation1 = new HashMap<>();
         writtenLobbyLocation2 = new HashMap<>();
+        globalPvPMode = getPvpMode();
         loadArenas();
     }
     private void loadArenas() {
@@ -165,6 +168,34 @@ public class ArenaManager {
                 "An error occurred while saving the arena config to arena.yml");
 
     }
+    public void changeGameMode(String arenaName, String gamemode) {
+        Arena arena = arenaNames.get(arenaName);
+        if (arena != null) {
+            ConfigurationSection config = configManager.getArenaConfig();
+            String modePath = "arenas." + arena.getName() + ".mode";
+
+            config.set(modePath, gamemode);
+            arena.setCurrentGameMode(gamemode);
+
+            configManager.saveArenaConfig();
+
+
+        }
+
+    }
+    public String getGameMode(String arenaName){
+        String path = "arenas." + arenaName + ".mode";
+
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        return configurationSection.get(path).toString();
+    }
+    public void changeCurrentPvPMode(){
+        globalPvPMode = !globalPvPMode;
+    }
+
+    public boolean getCurrentPvPMode(){
+        return globalPvPMode;
+    }
     public void setMinY(String arenaName, int inputtedY_level, Player player){
         String basePath = "arenas." + arenaName;
         String yLevelPath = basePath + ".Y-levels.Ymin";
@@ -229,12 +260,10 @@ public class ArenaManager {
             player.sendMessage("Added: " + amount + " " + item + " to starting items.");
         }, "An error occurred while adding starter item to arena.yml");
     }
-
     private void updateInMemoryItemList(String arenaName){
         List<ItemStack> updatedItems = getStarterItems(arenaName);
         setStartingItems(arenaName, updatedItems);
     }
-
     private void setStartingItems(String arenaName, List<ItemStack> items){
         this.startingItemsMap.put(arenaName, items);
     }
@@ -243,7 +272,6 @@ public class ArenaManager {
             return getStarterItems(arenaName);
         } else return this.startingItemsMap.get(arenaName);
     }
-
     public List<ItemStack> getStarterItems(String arenaName){
         FileConfiguration arenaConfig = configManager.getArenaConfig();
         String basePath = "arenas." + arenaName + ".start-items";
@@ -266,7 +294,6 @@ public class ArenaManager {
 
         return items;
     }
-
     public void deleteStarterItem(String arenaName, String item, Player player){
         String basePath = "arenas." + arenaName;
         String itemPath = basePath + ".start-items";
@@ -296,7 +323,6 @@ public class ArenaManager {
 
         }, "An error occurred while removing starter item from arena.yml");
     }
-
     private String parseDeleteItem(String item){
         String[] rawString = item.split("\\{");
         String uncleanString = rawString[1];
@@ -305,7 +331,6 @@ public class ArenaManager {
 
         return cleanerString.replace(" ", "");
     }
-
     public void setBlacklistedBlocks(String arenaName, String block, Player player){
         String basePath = "arenas." + arenaName;
         String blockPath = basePath + ".blacklisted-blocks";
@@ -355,12 +380,10 @@ public class ArenaManager {
             player.sendMessage("Added: " + finalBlock + " to blacklisted blocks.");
         }, "An error occurred while adding blacklisted block to arena.yml");
     }
-
     private void updateBlacklistedBlocks(String arenaName){
         List<ItemStack> updatedBlacklist = getBlacklistedBlocks(arenaName);
         blacklistedBlocksMap.put(arenaName, updatedBlacklist);
     }
-
     public List<ItemStack> getBlacklistedBlocks(String arenaName) {
         FileConfiguration arenaConfig = configManager.getArenaConfig();
         String basePath = "arenas." + arenaName + ".blacklisted-blocks";
@@ -391,7 +414,6 @@ public class ArenaManager {
         }
         return blocks;
     }
-
     public void deleteBlacklistedItem(String arenaName, String block, Player player){
         String basePath = "arenas." + arenaName + ".blacklisted-blocks";
 
@@ -419,7 +441,6 @@ public class ArenaManager {
         }, "An error occurred while removing blacklisted block from arena.yml");
 
     }
-
     public void setMinPlayers(String arenaName, int minPlayers) {
         Arena arena = getArena(arenaName);
         String basePath = "arenas." + arena.getName() + ".players";
@@ -465,20 +486,16 @@ public class ArenaManager {
 
         configManager.saveArenaConfig();
     }
-
-
-    public String getPvpMode(){
+    public Boolean getPvpMode(){
         String basePath = "Global settings.";
         ConfigurationSection configurationSection = configManager.getArenaConfig();
-        Object pvpMode = configurationSection.get(basePath + "PvPMode.");
-
-        if(pvpMode == null){
-            return "true";
+        String mode = configurationSection.get("Global settings.PvPMode").toString();
+        if(mode.equalsIgnoreCase("true")){
+            return true;
+        } else if (mode.equalsIgnoreCase("false")) {
+            return false;
         }
-        if(!pvpMode.toString().equalsIgnoreCase("true") || !pvpMode.toString().equalsIgnoreCase("false")){
-            return "true";
-        } else return pvpMode.toString();
-
+        return null;
     }
     public void tryLogging(Runnable action, String errorMessage){
         try {
@@ -510,20 +527,6 @@ public class ArenaManager {
         configManager.getArenaConfig().set(path + ".x", location.getBlockX());
         configManager.getArenaConfig().set(path + ".y", location.getBlockY());
         configManager.getArenaConfig().set(path + ".z", location.getBlockZ());
-    }
-    public void changeGameMode(String arenaName, String gamemode) {
-        Arena arena = arenaNames.get(arenaName);
-        if (arena != null) {
-            ConfigurationSection config = configManager.getArenaConfig();
-            String modePath = "arenas." + arena.getName() + ".mode";
-
-            config.set(modePath, gamemode);
-
-            configManager.saveArenaConfig();
-
-
-        }
-
     }
     public void addPlayerToArena(String arenaName, Player player) {
         Arena arena = arenaNames.get(arenaName);
@@ -564,7 +567,8 @@ public class ArenaManager {
 
             Bukkit.broadcastMessage("The winner is: " + winnerName);
 
-            this.removePlayerFromArena(arenaName, winner);
+            arena.removePlayer(winner);
+            arena.clearStartingPlayers();
 
         }
 
@@ -589,26 +593,31 @@ public class ArenaManager {
     }
     public void setSurvivalGamemode(String arenaName){
         Arena arena = getArena(arenaName);
-        if(arena != null){
-            for(Player player : arena.getPlayers()){
-                player.setGameMode(GameMode.SURVIVAL);
-            }
+        if(arena == null) return;
+
+        for(Player player : arena.getStartingPlayers()){
+            player.setGameMode(GameMode.SURVIVAL);
         }
     }
     public void setAdventureGamemode(String arenaName){
         Arena arena = getArena(arenaName);
-        if(arena != null){
-            for(Player player : arena.getPlayers()){
-                player.setGameMode(GameMode.ADVENTURE);
-            }
+        if(arena == null) return;
+
+        for(Player player : arena.getStartingPlayers()){
+            player.setGameMode(GameMode.ADVENTURE);
         }
     }
     public Set<Player> getPlayersInArena(String arenaName) {
         Arena arena = arenaNames.get(arenaName);
-        if (arena != null) {
-            return new HashSet<>(arena.getPlayers());
-        }
-        return new HashSet<>();
+        if(arena == null) return null;
+
+        return new HashSet<>(arena.getPlayers());
+    }
+    public Set<Player> getStartingPlayersInArena(String arenaName){
+        Arena arena = arenaNames.get(arenaName);
+        if(arena == null) return null;
+
+        return new HashSet<>(arena.getStartingPlayers());
     }
     public int getPlayerAmountInArena(String arenaName){
         return getPlayersInArena(arenaName).size();
@@ -882,7 +891,7 @@ public class ArenaManager {
     }
     public void randomArenaTeleport (String arenaName, List<Location> spawnPoints){
         Arena arena = getArena(arenaName);
-        Set<Player> players = arena.getPlayers();
+        Set<Player> players = arena.getStartingPlayers();
         List<Location> availableSpawns = spawnPoints.stream()
                 .filter(spawn -> !usedSpawns.contains(spawn))
                 .toList();
@@ -904,6 +913,23 @@ public class ArenaManager {
         }
 
     }
+
+    public void checkOnlinePlayers(String arenaName){
+        Set<Player> onlinePlayers = new HashSet<>(Bukkit.getOnlinePlayers());
+
+        for(Player startingPlayer : getStartingPlayersInArena(arenaName)){
+            if(!onlinePlayers.contains(startingPlayer)){
+                arena.removeStartingPlayer(startingPlayer);
+            }
+        }
+
+        for(Player activePlayer : getPlayersInArena(arenaName)){
+            if(!onlinePlayers.contains(activePlayer)){
+                arena.removePlayer(activePlayer);
+            }
+        }
+    }
+
     public void teleportLobby(CommandSender sender, String arenaName) {
         if (!(sender instanceof Player)) {
             sender.sendMessage("This command can only be used by a player.");
@@ -963,7 +989,7 @@ public class ArenaManager {
     }
     public void storeAndClearPlayersInventory(String arenaName) {
 
-        for(Player player : getPlayersInArena(arenaName)){
+        for(Player player : getStartingPlayersInArena(arenaName)){
             UUID playerId = player.getUniqueId();
 
             // Store items
@@ -1059,12 +1085,10 @@ public class ArenaManager {
 
     }*/
 
-
-
     public void giveStartingItems(String arenaName){
 
         List<ItemStack> startingItems = getStarterItems(arenaName);
-        for(Player player : getPlayersInArena(arenaName)){
+        for(Player player : getStartingPlayersInArena(arenaName)){
             for(ItemStack item : startingItems){
                 player.getInventory().addItem(item);
             }

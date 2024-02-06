@@ -7,6 +7,8 @@ import com.sirhiggelbottom.lavaescape.plugin.managers.*;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -51,7 +53,7 @@ public class GameEvents implements Listener {
         this.playerLobbySelections = new HashMap<>();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         this.arena = arena;
-        this.globalPvPmode = true;
+        this.globalPvPmode = arenaManager.getPvpMode();
         playerPage = new HashMap<>();
         waitingForInput = new HashMap<>();
         previousPage = new HashMap<>();
@@ -250,13 +252,13 @@ public class GameEvents implements Listener {
 
         if (playerArena != null) {
             event.setCancelled(!playerArena.getGameState().equals(ArenaManager.GameState.LAVA) && !playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH));
-        } else if(arenaManager.getPvpMode().equalsIgnoreCase("false")){
+        } else if(!globalPvPmode){
             event.setCancelled(true); // @ToDo Fix: Players can hurt each other when they aren't in a arena, and globalPVP doesn't work.
         }
 
     }
 
-    @EventHandler
+    /*@EventHandler
     public void onBlockBreak(BlockBreakEvent event){
         Player player = event.getPlayer();
         Arena playerArena = arenaManager.findPlayerArena(player);
@@ -265,6 +267,35 @@ public class GameEvents implements Listener {
             event.setCancelled((!playerArena.getGameState().equals(ArenaManager.GameState.LAVA) && !playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH)));
         } else event.setCancelled(true);
 
+    }*/
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event){
+        Player player = event.getPlayer();
+        Arena playerArena = arenaManager.findPlayerArena(player);
+
+        if(playerArena == null){
+            player.sendMessage("Couldn't find the arena");
+            event.setCancelled(true);
+        } else {
+            Block block = event.getBlock();
+            Material material = block.getType();
+            List<ItemStack> getBlacklistedBlocks = arenaManager.getBlacklistedBlocks(playerArena.getName());
+            switch (playerArena.getGameState()){
+                case LAVA, DEATHMATCH, GRACE:
+                    for(ItemStack blacklistedBlock : getBlacklistedBlocks){
+                        if(blacklistedBlock.getType() == material){
+                            event.setCancelled(true);
+                            player.sendMessage("This is a blacklisted block!");
+                            break;
+                        }
+                    }
+                    break;
+                case WAITING, STARTING, STANDBY:
+                    event.setCancelled(true);
+                    player.sendMessage("The game hasn't started yet!");
+            }
+        }
     }
 
     @EventHandler
@@ -337,8 +368,9 @@ public class GameEvents implements Listener {
             case "switch global pvp mode":
                 event.setCancelled(true);
                 globalPvPmode = !globalPvPmode;
+                arenaManager.changeCurrentPvPMode();
                 arenaManager.setPvpMode(globalPvPmode);
-                player.sendMessage("PvP is: " + arenaManager.getPvpMode());
+                player.openInventory(arenaMenu.mainMenu(player));
                 break;
             case "join arena":
                 event.setCancelled(true);
@@ -353,14 +385,24 @@ public class GameEvents implements Listener {
                 mode = "server";
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arenaManager.changeGameMode(arenaName, mode);
-                arenaMenu.goBack(player);
+                arenaMenu.reloadPage(player, "config");
                 break;
             case "competition mode":
                 event.setCancelled(true);
                 mode = "competitive";
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arenaManager.changeGameMode(arenaName, mode);
-                arenaMenu.goBack(player);
+                arenaMenu.reloadPage(player, "config");
+                break;
+            case "start match":
+                event.setCancelled(true);
+                arenaName = arenaMenu.getArenaNamePage(player);
+                gameManager.adminStart(player, arenaName);
+                break;
+            case "restart match":
+                event.setCancelled(true);
+                arenaName = arenaMenu.getArenaNamePage(player);
+                gameManager.adminRestartGame(player, arenaName);
                 break;
             case "confirm arena placement":
                 event.setCancelled(true);

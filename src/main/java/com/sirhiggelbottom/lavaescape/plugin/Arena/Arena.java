@@ -13,7 +13,9 @@ public class Arena {
     private Location arenaLoc1, arenaLoc2;
     private Location lobbyLoc1, lobbyLoc2;
     private ArenaManager.GameState gameState;
+    private String currentGameMode;
     private final Set<Player> players;
+    private final Set<Player> startingPlayers;
 
     public Arena(String name, Location arenaLoc1, Location arenaLoc2, Location lobbyLoc1, Location lobbyLoc2) {
         this.name = name;
@@ -23,6 +25,7 @@ public class Arena {
         this.lobbyLoc2 = lobbyLoc2;
         this.gameState = ArenaManager.GameState.STANDBY;
         this.players = new HashSet<>();
+        this.startingPlayers = new HashSet<>();
     }
 
     private int lavaTaskId = -1; // A field to store the task ID. Initialized to -1 to indicate no task is set.
@@ -30,6 +33,8 @@ public class Arena {
     public void setLavaTaskId(int taskId) {
         this.lavaTaskId = taskId;
     }
+
+
 
     // Method to get the lava task ID
     public int getLavaTaskId() {
@@ -42,6 +47,16 @@ public class Arena {
             Bukkit.getScheduler().cancelTask(this.lavaTaskId);
             this.lavaTaskId = -1; // Reset the task ID
         }
+    }
+
+    public void setCurrentGameMode(String gameMode){
+        currentGameMode = gameMode;
+    }
+
+    public String getCurrentGameMode(){
+        if(currentGameMode != null){
+            return currentGameMode;
+        } else return null;
     }
 
     /*
@@ -75,8 +90,21 @@ public class Arena {
 
     // Player management methods
     public void addPlayer(Player player) {
+        startingPlayers.add(player);
         players.add(player);
         // Additional logic for adding a player
+    }
+
+    public void clearStartingPlayers(){
+        startingPlayers.clear();
+    }
+
+    public Set<Player> getStartingPlayers(){
+        return new HashSet<>(startingPlayers);
+    }
+
+    public void removeStartingPlayer(Player player){
+        startingPlayers.remove(player);
     }
 
     public void removePlayer(Player player) {

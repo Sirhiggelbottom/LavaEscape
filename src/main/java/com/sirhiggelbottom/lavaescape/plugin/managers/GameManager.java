@@ -26,6 +26,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitScheduler;
 
 public class GameManager {
@@ -63,29 +64,76 @@ public class GameManager {
 
         int minPlayers = arenaManager.getMinPlayers(arenaName);
         int remainingPlayersForStart = minPlayers - arena.getPlayers().size();
-        if (arena.getPlayers().size() >= minPlayers){
 
-            arenaManager.randomArenaTeleport(arenaName,arenaManager.getSpawnPoints(arenaName));
-            arenaManager.storeAndClearPlayersInventory(arenaName);
-            arenaManager.giveStartingItems(arenaName);
-            arenaManager.setSurvivalGamemode(arenaName);
-            arena.setGameState(ArenaManager.GameState.STARTING);
-            plugin.setShouldContinueFilling(true);
-            lavaTask(arenaName);
+        if(!arenaManager.getGameMode(arenaName).isBlank() || !arenaManager.getGameMode(arenaName).isEmpty()){
+            if(arenaManager.getGameMode(arenaName).equalsIgnoreCase("server")){
+                if (arena.getPlayers().size() >= minPlayers){
 
-        }else {
-            Bukkit.broadcastMessage("Waiting for more players to start game " + remainingPlayersForStart + " is needed before the game can start.");
-            Bukkit.broadcastMessage("There is: " + arena.getPlayers().size() + " present in the lobby");
-            arenaManager.setAdventureGamemode(arenaName);
-            arena.setGameState(ArenaManager.GameState.WAITING);
-            plugin.setShouldContinueFilling(false);
+                    arenaManager.randomArenaTeleport(arenaName,arenaManager.getSpawnPoints(arenaName));
+                    arenaManager.storeAndClearPlayersInventory(arenaName);
+                    arenaManager.giveStartingItems(arenaName);
+                    arenaManager.setSurvivalGamemode(arenaName);
+                    arena.setGameState(ArenaManager.GameState.STARTING);
+                    plugin.setShouldContinueFilling(true);
+                    lavaTask(arenaName);
+
+                }else {
+                    Bukkit.broadcastMessage("Waiting for more players to start game " + remainingPlayersForStart + " is needed before the game can start.");
+                    Bukkit.broadcastMessage("There is: " + arena.getPlayers().size() + " present in the lobby");
+                    arenaManager.setAdventureGamemode(arenaName);
+                    arena.setGameState(ArenaManager.GameState.WAITING);
+                    plugin.setShouldContinueFilling(false);
+                }
+            }
         }
+
+    }
+
+    public void adminStart(Player player, String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
+        arenaManager.healArenaPlayers(arenaName);
+
+        if(arenaManager.getGameMode(arenaName).equalsIgnoreCase("server")){
+            player.sendMessage("Wrong gamemode, change to Competition mode.");
+            return;
+        }
+
+        arenaManager.randomArenaTeleport(arenaName,arenaManager.getSpawnPoints(arenaName));
+        arenaManager.storeAndClearPlayersInventory(arenaName);
+        arenaManager.giveStartingItems(arenaName);
+        arenaManager.setSurvivalGamemode(arenaName);
+        arena.setGameState(ArenaManager.GameState.STARTING);
+        plugin.setShouldContinueFilling(true);
+        lavaTask(arenaName);
+
+    }
+
+    public void adminRestartGame(Player admin, String arenaName){
+        Arena arena = arenaManager.getArena(arenaName);
+
+        arena.cancelLavaTask();
+
+        for(Player player : arenaManager.getPlayersInArena(arenaName)){
+
+            arenaManager.healPlayer(player);
+            arenaManager.restorePlayerInventory(player);
+            arenaManager.teleportLobby(player, arenaName);
+
+        }
+
+        worldeditAPI.placeSchematic(admin, arenaName); // Resets the arena.
+
+        arenaManager.checkOnlinePlayers(arenaName);  // Checks if any of the starting or active players has left the server, and removes them if so.
+
+        adminStart(admin, arenaName);
 
     }
 
     public void lavaTask(String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
         String basePath = "arenas." + arena.getName() + ".timeValues";
+
+        arena.setGameState(ArenaManager.GameState.GRACE);
 
         int Ymax = worldeditAPI.findArenaMaximumPointNonDebug(arenaName).getY();
 
@@ -96,9 +144,7 @@ public class GameManager {
             gracePeriod = 1;
         }
 
-        int delay = configManager.getArenaConfig().getInt(basePath + ".lavadelay");
-
-        arena.setGameState(ArenaManager.GameState.GRACE);
+        int riseTime = configManager.getArenaConfig().getInt(basePath + ".lavadelay");
 
         BukkitScheduler scheduler = plugin.getServer().getScheduler();
         int taskId = scheduler.scheduleSyncRepeatingTask(plugin, new Runnable() {
@@ -122,7 +168,7 @@ public class GameManager {
                 Bukkit.broadcastMessage("Y-level: " + currentY + " is being filled with lava");
                 currentY++;
             }
-        }, 20L * gracePeriod,20L * delay);
+        }, 20L * gracePeriod,20L * riseTime);
         arena.setLavaTaskId(taskId);
     }
 
