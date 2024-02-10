@@ -108,3 +108,9 @@ Optional settings:
 -[ ] Add a picture for the blacklisted blocks.
 
 And the option to delete the entire arena.
+
+## Credits
+
+- sk89q - Worldedit
+- WesJD - AnvilGUI
+- goodbyepavlyi - Insperation from his plugin: LavaRise
