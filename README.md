@@ -79,7 +79,7 @@ Arena page for OP players.
 
 
 
-### Config arena
+### Config
 Here you will find all the settings necessary for the arena to work.  
 These are sorted in chronological order
 Required settings:
