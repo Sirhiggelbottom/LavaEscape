@@ -33,8 +33,8 @@ The hottest PvP/PvE arena mini-game!
 
 
 ## Usage
-When you have downloaded and enabled the plugin, use: `/lava menu`.
-This will open the menu system, there you will be greeted by the main menu.
+When you have downloaded and enabled the plugin, use: `/lava menu`  
+This will open the menu system, where you will be greeted by the main menu.
 ### Main menu
 Here you can:
 - Open a list of all existing arenas
@@ -44,7 +44,7 @@ Here you can:
 
 ### Create a new arena
 This will bring up a anvil GUI page (Kudos to WesJD for creating AnvilGUI).  
-Input the name of the arena just like you would when renaming an item, then press the output item.  
+Input the name of the arena, just like you would when renaming an item, then press the output item.  
 If you inputed a valid name, you will be asked to confirm the name for the arena. If not you will have to input a valid one again.
 
 Arena creation page:
@@ -101,16 +101,24 @@ Optional settings:
 - Starter items:
   Opens a list displaying each starter item and the option to add new.
   When you click on a starter item you get the option to remove it.
--[ ] Add a picture for the starter items\
+- [ ] Add a picture for the starter items
 - Blacklisted blocks:
   Opens a list displaying each blacklisted block which the players won't be able to destroy, this includes OP players incase they destroy a block on accident.
-  When you click on a blacklisted block you get the option to remove it.
--[ ] Add a picture for the blacklisted blocks.
+  When you click on a blacklisted block you get the option to remove it.  
+
+- [ ] Add a picture for the blacklisted blocks.
 
 And the option to delete the entire arena.
+
+
 
 ## Credits
 
 - sk89q - Worldedit
 - WesJD - AnvilGUI
 - goodbyepavlyi - Insperation from his plugin: LavaRise
+
+
+
+## License
+This project is licensed under the [MIT License](https://github.com/Sirhiggelbottom/LavaEscape/blob/test/LICENSE) <!-- https://github.com/Sirhiggelbottom/LavaEscape/blob/test/LICENSE -->
