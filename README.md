@@ -1,11 +1,11 @@
 # LavaEscape
-The hottest PvP/PvE arena game!
+The hottest PvP/PvE arena mini-game!
 
 
 
 ## Features
   - An exciting game for your server! Have players fight each other while they try to escape the soaring heat from the rising lava!
-  - A Menu system that lets you create and configure arenas, all without needing to input any commands!
+  - A Menu system that lets you create and configure arenas, all with a single command!
   - Add starter items for players in each arena!
   - Stop players from ruining your beautiful decorations by blacklisting certain blocks!
   - Add loot chests! (Not implemented yet)
