@@ -81,9 +81,9 @@ Arena page for OP players.
 
 ### Config
 Here you will find all the settings necessary for the arena to work.  
-These are sorted in chronological order
+These are sorted in chronological order.  
 Required settings:
-- Set areas for the Arena and Lobby:
+- Set the areas for the Arena and Lobby:
   - Set arena
   - Set lobby
 - Set the spawnpoint area
