@@ -9,15 +9,19 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -25,38 +29,34 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.io.File;
 import java.util.*;
 
+import static com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager.GameState.*;
+
 public class GameEvents implements Listener {
     private final LavaEscapePlugin plugin;
     public final Map<UUID, Location[]> playerArenaSelections;
     public final Map<UUID, Location[]> playerLobbySelections;
-    private final Arena arena;
     private final ArenaManager arenaManager;
     private final GameManager gameManager;
-    private final MenuManager menuManager;
+    private final ItemManager itemManager;
     private final ArenaMenu arenaMenu;
     private final WorldeditAPI worldeditAPI;
     private final ConfigManager configManager;
-    private Map<UUID, Integer> playerPage;
-    private Map<UUID, Integer> waitingForInput;
-    private Map<UUID, Integer> previousPage;
+
     private boolean globalPvPmode;
 
-    public GameEvents(LavaEscapePlugin plugin, Arena arena, ArenaManager arenaManager, GameManager gameManager, MenuManager menuManager, ArenaMenu arenaMenu, WorldeditAPI worldeditAPI, ConfigManager configManager) {
+    public GameEvents(LavaEscapePlugin plugin, ArenaManager arenaManager, GameManager gameManager, ItemManager itemManager, ArenaMenu arenaMenu, WorldeditAPI worldeditAPI, ConfigManager configManager) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.gameManager = gameManager;
-        this.menuManager = menuManager;
+        this.itemManager = itemManager;
         this.arenaMenu = arenaMenu;
         this.worldeditAPI = worldeditAPI;
         this.configManager = configManager;
         this.playerArenaSelections = new HashMap<>();
         this.playerLobbySelections = new HashMap<>();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        this.arena = arena;
         this.globalPvPmode = arenaManager.getPvpMode();
-        playerPage = new HashMap<>();
-        waitingForInput = new HashMap<>();
-        previousPage = new HashMap<>();
+
     }
 
     /*
@@ -90,67 +90,67 @@ public class GameEvents implements Listener {
         // Cooldown logic to stop spam messages
         long lastInteractTime = lastInteract.getOrDefault(player.getUniqueId(), 0L);
         long currentTime = System.currentTimeMillis();
-        if (currentTime - lastInteractTime < 500) {
-            return;
-        }
-        lastInteract.put(player.getUniqueId(), currentTime);
+        if (currentTime - lastInteractTime > 500) {
+            lastInteract.put(player.getUniqueId(), currentTime);
 
-        if (itemName.equals("ArenaWand")) {
-            Action action = event.getAction();
+            if (itemName.equals("ArenaWand")) {
+                Action action = event.getAction();
 
 
-            // Check for left or right-click on a block
-            if (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK) {
-                Location[] arenaSelections = playerArenaSelections.computeIfAbsent(playerId, k -> new Location[2]);
+                // Check for left or right-click on a block
+                if (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK) {
+                    Location[] arenaSelections = playerArenaSelections.computeIfAbsent(playerId, k -> new Location[2]);
 
-                if (action == Action.LEFT_CLICK_BLOCK) {
-                    arenaSelections[0] = event.getClickedBlock().getLocation();
-                    event.getPlayer().sendMessage("First position set at: " + arenaSelections[0]);
-                } else {
-                    arenaSelections[1] = event.getClickedBlock().getLocation();
-                    event.getPlayer().sendMessage("Second position set at: " + arenaSelections[1]);
+                    if (action == Action.LEFT_CLICK_BLOCK) {
+                        arenaSelections[0] = event.getClickedBlock().getLocation();
+                        event.getPlayer().sendMessage("First position set at: " + arenaSelections[0].getX() + ", " + arenaSelections[0].getY() + ", " + arenaSelections[0].getZ());
+                    } else {
+                        arenaSelections[1] = event.getClickedBlock().getLocation();
+                        event.getPlayer().sendMessage("Second position set at: " + arenaSelections[1].getX() + ", " + arenaSelections[1].getY() + ", " + arenaSelections[1].getZ());
+                    }
+
+                    // Cancel the event to prevent double firing
+                    event.setCancelled(true);
+                }
+            } else if (itemName.equals("LobbyWand")) {
+                Action action = event.getAction();
+
+                // Check for left or right-click on a block
+                if (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK) {
+                    Location[] lobbySelections = playerLobbySelections.computeIfAbsent(playerId, k -> new Location[2]);
+
+                    if (action == Action.LEFT_CLICK_BLOCK) {
+                        lobbySelections[0] = event.getClickedBlock().getLocation();
+                        event.getPlayer().sendMessage("First position set");
+                    } else {
+                        lobbySelections[1] = event.getClickedBlock().getLocation();
+                        event.getPlayer().sendMessage("Second position set");
+                    }
+
+                    // Cancel the event to prevent double firing
+                    event.setCancelled(true);
                 }
 
-                // Cancel the event to prevent double firing
-                event.setCancelled(true);
-            }
-        } else if (itemName.equals("LobbyWand")) {
-            Action action = event.getAction();
-
-            // Check for left or right-click on a block
-            if (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK) {
-                Location[] lobbySelections = playerLobbySelections.computeIfAbsent(playerId, k -> new Location[2]);
-
-                if (action == Action.LEFT_CLICK_BLOCK) {
-                    lobbySelections[0] = event.getClickedBlock().getLocation();
-                    event.getPlayer().sendMessage("First position set");
-                } else {
-                    lobbySelections[1] = event.getClickedBlock().getLocation();
-                    event.getPlayer().sendMessage("Second position set");
-                }
-
-                // Cancel the event to prevent double firing
-                event.setCancelled(true);
             }
 
+            List<String> message = new ArrayList<>();
+
+            if(itemName.equals("ArenaWand") && getFirstArenaPosition(playerId) != null && getSecondArenaPosition(playerId) != null){
+                player.sendMessage("Arena pos set!");
+                arenaManager.writtenArenaLocation1.put(playerId, getFirstArenaPosition(playerId).toString());
+                arenaManager.writtenArenaLocation2.put(playerId, getSecondArenaPosition(playerId).toString());
+                player.openInventory(itemManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player), "arena"));
+            } else if (itemName.equals("LobbyWand") && getFirstLobbyPosition(playerId) != null && getSecondLobbyPosition(playerId) != null) {
+                player.sendMessage("Lobby pos set!");
+                message.add("First pos: " + getFirstLobbyPosition(playerId).toString());
+                message.add("Second pos: " + getSecondLobbyPosition(playerId).toString());
+                player.sendMessage(message.toString());
+                arenaManager.writtenLobbyLocation1.put(playerId, getFirstLobbyPosition(playerId).toString());
+                arenaManager.writtenLobbyLocation2.put(playerId, getSecondLobbyPosition(playerId).toString());
+                player.openInventory(itemManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player), "lobby"));
+            }
         }
 
-        List<String> message = new ArrayList<>();
-
-        if(itemName.equals("ArenaWand") && getFirstArenaPosition(playerId) != null && getSecondArenaPosition(playerId) != null){
-            player.sendMessage("Arena pos set!");
-            arenaManager.writtenArenaLocation1.put(playerId, getFirstArenaPosition(playerId).toString());
-            arenaManager.writtenArenaLocation2.put(playerId, getSecondArenaPosition(playerId).toString());
-            player.openInventory(menuManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player), "arena"));
-        } else if (itemName.equals("LobbyWand") && getFirstLobbyPosition(playerId) != null && getSecondLobbyPosition(playerId) != null) {
-            player.sendMessage("Lobby pos set!");
-            message.add("First pos: " + getFirstLobbyPosition(playerId).toString());
-            message.add("Second pos: " + getSecondLobbyPosition(playerId).toString());
-            player.sendMessage(message.toString());
-            arenaManager.writtenLobbyLocation1.put(playerId, getFirstLobbyPosition(playerId).toString());
-            arenaManager.writtenLobbyLocation2.put(playerId, getSecondLobbyPosition(playerId).toString());
-            player.openInventory(menuManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player), "lobby"));
-        }
     }
 
     public Location getFirstArenaPosition (UUID playerId){
@@ -210,9 +210,9 @@ public class GameEvents implements Listener {
         lastInteract.put(player.getUniqueId(), currentTime);
 
         if(getFirstArenaPosition(playerId) != null && getSecondArenaPosition(playerId) != null){
-            menuManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player), "arena");
+            itemManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player), "arena");
         } else if (getFirstLobbyPosition(playerId) != null && getSecondLobbyPosition(playerId) != null) {
-            menuManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player),"lobby");
+            itemManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player),"lobby");
         }
     }*/
 
@@ -243,6 +243,119 @@ public class GameEvents implements Listener {
         }
 
     }
+
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent event){
+        Player player = event.getPlayer();
+        boolean isAdmin = player.hasPermission("lavaescape.admin");
+
+        Arena playerArena;
+        String arenaName;
+
+        Block block = event.getBlockPlaced();
+        Material blockMaterial = event.getBlock().getType();
+        Chest chest;
+
+        if(!isAdmin && arenaManager.findPlayerArena(player) == null){
+            event.setCancelled(true);
+            player.sendMessage("You are not allowed to place blocks when you are not in a match!");
+            return;
+        }
+
+        if(isAdmin){
+            if(blockMaterial.equals(Material.CHEST)){
+                if(arenaManager.findPlayerArena(player) == null){
+                    event.setCancelled(true);
+                    player.sendMessage("You can't place chest when you are not in a arena!");
+                    return;
+                }
+
+                playerArena = arenaManager.findPlayerArena(player);
+                arenaName = playerArena.getName();
+
+                ItemStack itemInHand = event.getItemInHand();
+                if(itemInHand.hasItemMeta()){
+                    ItemMeta meta = itemInHand.getItemMeta();
+                    if(meta == null) return;
+                    String displayName = ChatColor.stripColor(meta.getDisplayName());
+
+
+                    if(meta.hasDisplayName() && displayName.equalsIgnoreCase("get loot chest")){
+                        Location lootChestLocation = block.getLocation();
+                        List<Location> lootChestLoactions = arenaManager.getLootChestLocations(arenaName, player);
+                        if(!lootChestLoactions.contains(lootChestLocation)){
+                            int amount = arenaManager.getLootChestsAmount(arenaName);
+                            arenaManager.setLootChestLocation(arenaName, amount + 1, lootChestLocation, player);
+                            chest = (Chest) block.getState();
+                            chest.setCustomName(ChatColor.GOLD + "Loot chest");
+                            chest.update();
+                            player.sendMessage("Lootchest placed at: " + lootChestLocation);
+                            player.sendMessage("Name of the inventory in the placed loot chest: " + chest.getCustomName());
+                        }
+                    }
+                }
+            }
+        } else {
+            playerArena = arenaManager.findPlayerArena(player);
+
+            if(playerArena.getGameState() == WAITING || playerArena.getGameState() == STARTING || playerArena.getGameState() == STANDBY){
+                player.sendMessage("Game hasn't started yet!");
+                event.setCancelled(true);
+            }
+        }
+
+    }
+
+    @EventHandler
+    public void onInventoryOpen(InventoryOpenEvent event){
+        if(event.getPlayer() instanceof Player player){
+
+            if(arenaManager.findPlayerArena(player) == null){
+                return;
+            }
+
+            if(ChatColor.stripColor(event.getView().getTitle()).equalsIgnoreCase("loot chest")){ // This might have to be changed into Get loot chest, since that's what it's called in itemManger. The displayname is changed in the onBlockPlace event.
+                // Cooldown logic to stop spam messages
+                long lastInteractTime = lastInteract.getOrDefault(player.getUniqueId(), 0L);
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastInteractTime > 500) {
+                    lastInteract.put(player.getUniqueId(), currentTime);
+
+                    Arena playerArena = arenaManager.findPlayerArena(player);
+                    String arenaName = playerArena.getName();
+                    if(event.getInventory().getType().equals(InventoryType.CHEST)){
+                        Location lootChestLocation = event.getInventory().getLocation();
+                        List<Location> lootChestLocations = arenaManager.getLootChestLocations(arenaName, player);
+
+                        if(!lootChestLocations.isEmpty() && lootChestLocations.contains(lootChestLocation)){
+
+                            if(arenaManager.openLootchests.containsKey(player.getUniqueId())){
+
+                                for(Map.Entry<UUID, List<Location>> entry : arenaManager.openLootchests.entrySet()){
+                                    List<Location> openedLootChests = entry.getValue();
+
+                                    if(!openedLootChests.contains(lootChestLocation)){
+                                        arenaManager.spawnLootItems(event.getInventory(), arenaName);
+                                        arenaManager.openLootchests.get(player.getUniqueId()).add(lootChestLocation);
+
+                                    } else {
+                                        player.sendMessage("You have already opened this loot chest!");
+                                    }
+                                }
+                            } else {
+                                arenaManager.spawnLootItems(event.getInventory(), arenaName);
+                                List<Location> newOpenedLootChestList = new ArrayList<>();
+                                newOpenedLootChestList.add(lootChestLocation);
+                                arenaManager.openLootchests.put(player.getUniqueId(), newOpenedLootChestList);
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @EventHandler
     public void onPlayerDamage (EntityDamageByEntityEvent event){
 
@@ -253,33 +366,58 @@ public class GameEvents implements Listener {
         if (playerArena != null) {
             event.setCancelled(!playerArena.getGameState().equals(ArenaManager.GameState.LAVA) && !playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH));
         } else if(!globalPvPmode){
-            event.setCancelled(true); // @ToDo Fix: Players can hurt each other when they aren't in a arena, and globalPVP doesn't work.
+            event.setCancelled(true); // @ToDo Fix: Players can hurt each other when they aren't in a arena, and globalPVP doesn't work. Edit: Think it's fixed
         }
 
     }
 
-    /*@EventHandler
-    public void onBlockBreak(BlockBreakEvent event){
-        Player player = event.getPlayer();
-        Arena playerArena = arenaManager.findPlayerArena(player);
-
-        if (playerArena != null) {
-            event.setCancelled((!playerArena.getGameState().equals(ArenaManager.GameState.LAVA) && !playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH)));
-        } else event.setCancelled(true);
-
-    }*/
-
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event){
         Player player = event.getPlayer();
-        Arena playerArena = arenaManager.findPlayerArena(player);
+        boolean isAdmin = player.hasPermission("lavaescape.admin");
 
-        if(playerArena == null){
-            player.sendMessage("Couldn't find the arena");
-            event.setCancelled(true);
+        Block block = event.getBlock();
+        Material material = block.getType();
+        Arena playerArena;
+        String arenaName;
+
+        Location blockLocation = block.getLocation();
+        List<Location> lootChestLocations;
+
+
+        if(isAdmin){
+            if(material.equals(Material.CHEST)){
+                lootChestLocations = arenaManager.findLootChestLocations(player);
+                if(lootChestLocations.contains(blockLocation) && arenaManager.findPlayerArena(player) == null){
+                    event.setCancelled(true);
+                    player.sendMessage("Error, you need to be in LootChest placement mode in order to remove loot chests.");
+                } else if(lootChestLocations.contains(blockLocation) && arenaManager.findPlayerArena(player) != null){
+                    playerArena = arenaManager.findPlayerArena(player);
+                    arenaName = playerArena.getName();
+
+                    if(arenaManager.getGameStage(arenaName).equals("STANDBY")){
+                        arenaManager.deleteLootChestlocation(arenaName, blockLocation, player);
+                    } else{
+                        event.setCancelled(true);
+                    }
+                }
+            }
+
         } else {
-            Block block = event.getBlock();
-            Material material = block.getType();
+
+            if(arenaManager.findPlayerArena(player) == null){
+                event.setCancelled(true);
+                return;
+            }
+
+            playerArena = arenaManager.findPlayerArena(player);
+            lootChestLocations = arenaManager.findLootChestLocations(player);
+            if(lootChestLocations.contains(blockLocation)){
+                event.setCancelled(true);
+                player.sendMessage("You're not allowed to break Loot chests!");
+                return;
+            }
+
             List<ItemStack> getBlacklistedBlocks = arenaManager.getBlacklistedBlocks(playerArena.getName());
             switch (playerArena.getGameState()){
                 case LAVA, DEATHMATCH, GRACE:
@@ -295,7 +433,36 @@ public class GameEvents implements Listener {
                     event.setCancelled(true);
                     player.sendMessage("The game hasn't started yet!");
             }
+
         }
+
+        /*playerArena = arenaManager.findPlayerArena(player);
+
+        if(playerArena == null){
+            player.sendMessage("Couldn't find the arena");
+            event.setCancelled(true);
+        } else {
+
+            if(block.hasMetadata("Lootchest")){
+                event.setCancelled(true);
+                player.sendMessage("You can't break loot chests!");
+            }
+            List<ItemStack> getBlacklistedBlocks = arenaManager.getBlacklistedBlocks(playerArena.getName());
+            switch (playerArena.getGameState()){
+                case LAVA, DEATHMATCH, GRACE:
+                    for(ItemStack blacklistedBlock : getBlacklistedBlocks){
+                        if(blacklistedBlock.getType() == material){
+                            event.setCancelled(true);
+                            player.sendMessage("This is a blacklisted block!");
+                            break;
+                        }
+                    }
+                    break;
+                case WAITING, STARTING, STANDBY:
+                    event.setCancelled(true);
+                    player.sendMessage("The game hasn't started yet!");
+            }
+        }*/
     }
 
     @EventHandler
@@ -310,6 +477,82 @@ public class GameEvents implements Listener {
 
         }
 
+    }
+    // Event is meant to check if a player exits the menu system. If so it should empty the relevant hashmaps in itemManager.
+    /*@EventHandler
+    public void onInventoryEscape(InventoryCloseEvent event){
+
+        *//*if(arenaMenu.autoClosed){
+            arenaMenu.autoClosed = false;
+            return;
+        }*//*
+
+        if(event.getPlayer() instanceof Player player){
+
+
+
+            long lastInteractTime = lastInteract.getOrDefault(player.getUniqueId(), 0L);
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastInteractTime < 500) {
+                return;
+            }
+
+            if(!arenaMenu.autoClosed){
+                InventoryView viewClosedInventory = event.getView();
+                String inventoryName = ChatColor.stripColor(viewClosedInventory.getTitle());
+
+                player.sendMessage("This is the name of the closed inventory: " + inventoryName);
+            } else arenaMenu.autoClosed = false;
+
+        }
+
+    }*/
+
+    @EventHandler
+    public void playerInteract(PlayerInteractEvent event){
+        Player player = event.getPlayer();
+        switch (event.getAction()){
+            case RIGHT_CLICK_AIR:
+            case RIGHT_CLICK_BLOCK:
+
+
+                ItemStack itemInHand = player.getInventory().getItemInHand();
+
+                if(itemInHand.getType().equals(Material.AIR)){
+                    return;
+                } else if(!itemInHand.getType().equals(Material.BARRIER)){
+                    return;
+                }
+
+
+                ItemMeta meta = itemInHand.getItemMeta();
+
+                if(meta == null) {
+                    player.sendMessage("Error, couldn't find item meta");
+                    return;
+                }
+
+                String displayName = ChatColor.stripColor(meta.getDisplayName());
+                String searchedDisplayName;
+                ItemMeta searchedItemMeta;
+
+                if(displayName.equalsIgnoreCase("stop lootchest placement")){
+                    event.setCancelled(true);
+                    for(ItemStack item : player.getInventory().getContents()){
+                        if(item != null){
+                            searchedItemMeta = item.getItemMeta();
+                            if(searchedItemMeta != null){
+                                searchedDisplayName = ChatColor.stripColor(searchedItemMeta.getDisplayName());
+                                if(searchedDisplayName.equalsIgnoreCase("get loot chest")){
+                                    player.getInventory().remove(item);
+                                }
+                            }
+                        }
+                    }
+                    player.getInventory().remove(itemInHand);
+                    arenaManager.stopLootChestPlacement(arenaManager.findPlayerArena(player).getName(), player);
+                }
+        }
     }
 
     @EventHandler
@@ -344,7 +587,7 @@ public class GameEvents implements Listener {
 
         String displayName = ChatColor.stripColor(clickedItem.getItemMeta().getDisplayName());
 
-        if (menuManager.anvilGUIUsers.contains(playerId)) {
+        if (itemManager.anvilGUIUsers.contains(playerId)) {
             return;
         }
 
@@ -364,6 +607,40 @@ public class GameEvents implements Listener {
             arenaMenu.deleteBlacklistedBlock(player, cleanedItem);
         }
 
+        String cleanedItem;
+
+        switch (inventoryTitle.toLowerCase()){
+
+            case "starter items":
+                event.setCancelled(true);
+                cleanedItem = arenaMenu.parseDeleteItem(itemName);
+                arenaMenu.deleteStartingItem(player, cleanedItem);
+                break;
+            case "blacklisted blocks":
+                event.setCancelled(true);
+                cleanedItem = arenaMenu.parseDeleteItem(itemName);
+                arenaMenu.deleteBlacklistedBlock(player, cleanedItem);
+                break;
+            case "loot items":
+                if(!displayName.equalsIgnoreCase("get loot chest")){
+                    event.setCancelled(true);
+                    cleanedItem = arenaMenu.parseDeleteItem(itemName);
+                    arenaMenu.deleteLootItem(player, cleanedItem);
+                } else {
+                    if(!inventoryTitle.equalsIgnoreCase("loot items")){ // This is to stop duplicating the loot chest whenever the admin clicks the loot chest in their inventory
+                        return;
+                    }
+                    event.setCancelled(true);
+                    arenaMenu.autoClosed = true;
+                    arenaName = arenaMenu.getArenaNamePage(player);
+                    arenaManager.addPlayerToArena(arenaName, player);
+                    player.getInventory().addItem(itemManager.getLootchestItem());
+                    player.getInventory().addItem(itemManager.getExitLootplacementModeItem());
+                    player.setGameMode(GameMode.CREATIVE);
+                    arenaMenu.closeInventory(player);
+                }
+        }
+
         switch (displayName.toLowerCase()) {
             case "switch global pvp mode":
                 event.setCancelled(true);
@@ -378,6 +655,7 @@ public class GameEvents implements Listener {
                 arenaManager.addPlayerToArena(arenaName, player);
                 arenaManager.teleportLobby(player, arenaName);
                 gameManager.isGameReady(arenaName);
+                arenaMenu.autoClosed = true;
                 arenaMenu.closeInventory(player);
                 break;
             case "normal mode":
@@ -387,6 +665,12 @@ public class GameEvents implements Listener {
                 arenaManager.changeGameMode(arenaName, mode);
                 arenaMenu.reloadPage(player, "config");
                 break;
+            case "update arena":
+                event.setCancelled(true);
+                arenaName = arenaMenu.getArenaNamePage(player);
+                worldeditAPI.saveArenaRegionAsSchematic(player, arenaName, true);
+                worldeditAPI.saveLobbyRegionAsSchematic(player, arenaName, true);
+                // worldeditAPI.findLootChests(arenaName);
             case "competition mode":
                 event.setCancelled(true);
                 mode = "competitive";
@@ -406,13 +690,14 @@ public class GameEvents implements Listener {
                 break;
             case "confirm arena placement":
                 event.setCancelled(true);
-                ItemStack arenaWand = menuManager.getArenaWandItem(player);
+                arenaMenu.autoClosed = true;
+                ItemStack arenaWand = itemManager.getArenaWandItem(player);
                 player.getInventory().remove(arenaWand);
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arena = arenaManager.getArena(arenaName);
                 arena.setArenaLocations(getFirstArenaPosition(playerId) , getSecondArenaPosition(playerId));
                 arenaManager.saveTheArena(arena);
-                worldeditAPI.saveArenaRegionAsSchematic(player,arenaName);
+                worldeditAPI.saveArenaRegionAsSchematic(player,arenaName, false);
                 arenaManager.writtenArenaLocation1.remove(playerId, arenaManager.writtenArenaLocation1.get(playerId));
                 arenaManager.writtenArenaLocation2.remove(playerId, arenaManager.writtenArenaLocation2.get(playerId));
                 //player.sendMessage(arenaName + " arena area set");
@@ -420,52 +705,61 @@ public class GameEvents implements Listener {
                 break;
             case "confirm lobby placement":
                 event.setCancelled(true);
-                ItemStack lobbyWand = menuManager.getLobbyWandItem(player);
+                arenaMenu.autoClosed = true;
+                ItemStack lobbyWand = itemManager.getLobbyWandItem(player);
                 player.getInventory().remove(lobbyWand);
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arena = arenaManager.getArena(arenaName);
                 arena.setLobbyLocations(getFirstLobbyPosition(playerId) , getSecondLobbyPosition(playerId));
                 arenaManager.saveTheLobby(arena);
-                worldeditAPI.saveLobbyRegionAsSchematic(player,arenaName);
+                worldeditAPI.saveLobbyRegionAsSchematic(player, arenaName, false);
                 arenaManager.writtenLobbyLocation1.remove(playerId, arenaManager.writtenLobbyLocation1.get(playerId));
                 arenaManager.writtenLobbyLocation2.remove(playerId, arenaManager.writtenLobbyLocation2.get(playerId));
                 //player.sendMessage(arenaName + " lobby area set");
                 arenaMenu.closeInventory(player);
                 break;
             case "set arena area":
+                event.setCancelled(true); // Denne var ikke her tidligere
+                arenaMenu.autoClosed = true;
                 event.setCancelled(true);
-                player.getInventory().addItem(menuManager.getArenaWandItem(player));
+                player.getInventory().addItem(itemManager.getArenaWandItem(player));
                 player.sendMessage("You have received the Arena wand.");
                 arenaMenu.closeInventory(player);
                 break;
             case "set lobby area":
-                player.getInventory().addItem(menuManager.getLobbyWandItem(player));
+                event.setCancelled(true); // Denne var ikke her tidligere
+                arenaMenu.autoClosed = true;
+                player.getInventory().addItem(itemManager.getLobbyWandItem(player));
                 player.sendMessage("You have received the Lobby wand.");
                 arenaMenu.closeInventory(player);
                 break;
             case "set minimum players":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "MIN_PLAYERS");
-                menuManager.setMinPlayers(player, arenaName);
+                itemManager.setMinPlayers(player);
                 break;
             case "set maximum players":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "MAX_PLAYERS");
-                menuManager.setMaxPlayers(player, arenaName);
+                itemManager.setMaxPlayers(player);
                 break;
             case "set min y-level":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "MIN_Y");
-                menuManager.setMinY(player, arenaName);
+                itemManager.setMinY(player);
                 break;
             case "set max y-level":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "MAX_Y");
-                menuManager.setMaxY(player, arenaName);
+                itemManager.setMaxY(player);
                 break;
             case "generate spawns":
                 event.setCancelled(true);
@@ -495,142 +789,189 @@ public class GameEvents implements Listener {
                 break;
             case "set rise time":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "RISE_TIME");
-                menuManager.setRiseTime(player, arenaName);
+                itemManager.setRiseTime(player);
                 break;
             case "set grace time":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "GRACE_TIME");
-                menuManager.setGraceTime(player, arenaName);
+                itemManager.setGraceTime(player);
                 break;
             case "reset arena":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
                 worldeditAPI.placeSchematic(player, arenaName);
                 break;
             case "delete arena":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 String subpage = displayName.replace(" ", "_");
                 arenaMenu.openSubPage(player, subpage);
                 break;
             case "yes i want to delete":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 String rawData = (ChatColor.stripColor(Objects.requireNonNull(clickedItem.getItemMeta().getLore()).toString()));
                 String[] splitRawData = rawData.split(": ");
                 String[] fixedRawData = splitRawData[1].split("]");
                 arenaName = fixedRawData[0];
                 arenaManager.deleteArena(player, arenaName);
+
                 player.sendMessage("Arena: '" + arenaName + "' has been deleted.");
                 arenaMenu.closeInventory(player);
                 break;
             case "no, what was i thinking?":
+                event.setCancelled(true); // Denne var ikke her tidligere
+                arenaMenu.autoClosed = true;
                 arenaMenu.openSubPage(player, arenaMenu.getPreviousSubPage(player).toString());
                 break;
             case "set starter items":
+                event.setCancelled(true); // Denne var ikke her tidligere
+                arenaMenu.autoClosed = true;
                 arenaMenu.openSubPage(player, "STARTER_ITEMS");
                 break;
             case "add new starter item":
                 event.setCancelled(true);
-                arenaName = arenaMenu.getArenaNamePage(player);
-                menuManager.setStarterItems(player, arenaName);
-                break;
-            case "add new blacklisted block":
-                event.setCancelled(true);
-                arenaName = arenaMenu.getArenaNamePage(player);
-                menuManager.setBlacklistedBlocks(player, arenaName);
+                arenaMenu.autoClosed = true;
+                itemManager.setStarterItems(player);
                 break;
             case "set blacklisted blocks":
                 event.setCancelled(true);
-                arenaName = arenaMenu.getArenaNamePage(player);
-                // arenaManager.reloadArenaYml(arenaName);
+                arenaMenu.autoClosed = true;
                 arenaMenu.openSubPage(player, "BLACKLISTED_BLOCKS");
+                break;
+            case "add new blacklisted block":
+                event.setCancelled(true);
+                arenaMenu.autoClosed = true;
+                itemManager.setBlacklistedBlocks(player);
+                break;
+            case "loot chest config":
+                event.setCancelled(true);
+                arenaMenu.autoClosed = true;
+                arenaMenu.openSubPage(player, "LOOT_ITEMS");
+                break;
+            case "add new loot item":
+                event.setCancelled(true);
+                itemManager.setLootItems(player);
                 break;
             case "confirm name":
                 event.setCancelled(true);
-                arenaName = menuManager.writtenArenaName.get(playerId);
+                arenaName = itemManager.writtenArenaName.get(playerId);
                 if(arenaName.equalsIgnoreCase("null")){
                     break;
                 }
+                arenaMenu.autoClosed = true;
                 arenaManager.createArena(arenaName, world);
-                menuManager.clearMap(player);
+                itemManager.clearMap(player);
                 player.sendMessage("Created arena: " + arenaName);
                 arenaMenu.openArenaPage(player, arenaManager.getArena(arenaName));
                 break;
             case "confirm miny":
                 event.setCancelled(true);
                 arenaName = arenaMenu.getArenaNamePage(player);
-                if (menuManager.parseValueToInt(player) != -1) {
-                    arenaManager.setMinY(arenaName, menuManager.parseValueToInt(player), player);
+                if (itemManager.parseValueToInt(player) != -1) {
+                    arenaManager.setMinY(arenaName, itemManager.parseValueToInt(player), player);
                 }
-                menuManager.clearMap(player);
+                itemManager.clearMap(player);
+                arenaMenu.autoClosed = true;
                 arenaMenu.goBack(player);
                 break;
             case "confirm maxy":
                 event.setCancelled(true);
                 arenaName = arenaMenu.getArenaNamePage(player);
-                if (menuManager.parseValueToInt(player) != -1) {
-                    arenaManager.setMaxY(arenaName, menuManager.parseValueToInt(player), player);
+                if (itemManager.parseValueToInt(player) != -1) {
+                    arenaManager.setMaxY(arenaName, itemManager.parseValueToInt(player), player);
                 }
-                menuManager.clearMap(player);
+                itemManager.clearMap(player);
+                arenaMenu.autoClosed = true;
                 arenaMenu.goBack(player);
                 break;
             case "confirm minimum players":
                 event.setCancelled(true);
                 arenaName = arenaMenu.getArenaNamePage(player);
-                if (menuManager.parseValueToInt(player) != -1) {
-                    arenaManager.setMinPlayers(arenaName, menuManager.parseValueToInt(player));
+                if (itemManager.parseValueToInt(player) != -1) {
+                    arenaManager.setMinPlayers(arenaName, itemManager.parseValueToInt(player));
                 }
-                menuManager.clearMap(player);
+                itemManager.clearMap(player);
+                arenaMenu.autoClosed = true;
                 arenaMenu.goBack(player);
                 break;
             case "confirm maximum players":
                 event.setCancelled(true);
                 arenaName = arenaMenu.getArenaNamePage(player);
-                if (menuManager.parseValueToInt(player) != -1) {
-                    arenaManager.setMaxPlayers(arenaName, menuManager.parseValueToInt(player));
+                if (itemManager.parseValueToInt(player) != -1) {
+                    arenaManager.setMaxPlayers(arenaName, itemManager.parseValueToInt(player));
                 }
-                menuManager.clearMap(player);
+                itemManager.clearMap(player);
+                arenaMenu.autoClosed = true;
                 arenaMenu.goBack(player);
                 break;
             case "confirm rise time":
                 event.setCancelled(true);
                 arenaName = arenaMenu.getArenaNamePage(player);
-                if (menuManager.parseValueToInt(player) != -1) {
-                    arenaManager.setRiseTime(arenaName, menuManager.parseValueToInt(player));
+                if (itemManager.parseValueToInt(player) != -1) {
+                    arenaManager.setRiseTime(arenaName, itemManager.parseValueToInt(player));
                 }
-                menuManager.clearMap(player);
+                itemManager.clearMap(player);
+                arenaMenu.autoClosed = true;
                 arenaMenu.goBack(player);
                 break;
             case "confirm grace time":
                 event.setCancelled(true);
                 arenaName = arenaMenu.getArenaNamePage(player);
-                if (menuManager.parseValueToInt(player) != -1) {
-                    arenaManager.setGracePeriod(arenaName, menuManager.parseValueToInt(player));
+                if (itemManager.parseValueToInt(player) != -1) {
+                    arenaManager.setGracePeriod(arenaName, itemManager.parseValueToInt(player));
                 }
-                menuManager.clearMap(player);
+                itemManager.clearMap(player);
+                arenaMenu.autoClosed = true;
                 arenaMenu.goBack(player);
                 break;
             case "confirm starting item":
                 event.setCancelled(true);
                 arenaName = arenaMenu.getArenaNamePage(player);
-                input = menuManager.writtenStarterItemsValue.get(playerId);
-                if (menuManager.parseStartingItemAmount(input) != -1) {
-                    arenaManager.setStarterItems(arenaName, menuManager.parseStartingItem(input), menuManager.parseStartingItemAmount(input), player);
+                input = itemManager.writtenStarterItemsValue.get(playerId);
+                if (itemManager.parseItemAmount(input) != -1) {
+                    arenaManager.setStarterItems(arenaName, itemManager.parseItem(input), itemManager.parseItemAmount(input), player);
                 }
-                menuManager.clearMap(player);
+                itemManager.clearMap(player);
+                arenaMenu.autoClosed = true;
+                arenaMenu.goBack(player);
+                break;
+            case "confirm loot item":
+                event.setCancelled(true);
+                arenaName = arenaMenu.getArenaNamePage(player);
+                input = itemManager.writtenLootItemsValue.get(playerId);
+                if (itemManager.parseItemAmount(input) != -1) {
+                    arenaManager.setLootItem(arenaName, itemManager.parseItem(input), itemManager.parseItemAmount(input), player);
+                }
+                itemManager.clearMap(player);
+                arenaMenu.autoClosed = true;
                 arenaMenu.goBack(player);
                 break;
             case "delete item":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
                 String item = arenaMenu.deleteItemMap.get(playerId);
                 arenaManager.deleteStarterItem(arenaName, item, player);
                 arenaMenu.goBack(player);
                 break;
+            case "delete loot item":
+                event.setCancelled(true);
+                arenaMenu.autoClosed = true;
+                arenaName = arenaMenu.getArenaNamePage(player);
+                String lootItem = arenaMenu.deleteItemMap.get(playerId);
+                arenaManager.deleteLootItem(arenaName, lootItem, player);
+                arenaMenu.goBack(player);
+                break;
             case "delete block":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
                 String block = arenaMenu.deleteBlockMap.get(playerId);
                 arenaManager.deleteBlacklistedItem(arenaName, block, player);
@@ -638,84 +979,106 @@ public class GameEvents implements Listener {
                 break;
             case "confirm blacklisted block":
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaName = arenaMenu.getArenaNamePage(player);
-                input = menuManager.writtenBlacklistetBlocksValue.get(playerId);
-                if (menuManager.parseBlacklistedBlock(input) != null) {
-                    arenaManager.setBlacklistedBlocks(arenaName, menuManager.parseBlacklistedBlock(input), player);
+                input = itemManager.writtenBlacklistetBlocksValue.get(playerId);
+                if (itemManager.parseBlacklistedBlock(input) != null) {
+                    arenaManager.setBlacklistedBlocks(arenaName, itemManager.parseBlacklistedBlock(input), player);
                 }
-                menuManager.clearMap(player);
+                itemManager.clearMap(player);
                 arenaMenu.goBack(player);
                 break;
             case "create new arena":
-                menuManager.createNewArena(player);
+                itemManager.createNewArena(player);
                 break;
             case "try again":
                 event.setCancelled(true);
-                switch (menuManager.getWrittenMapEnum(player)) {
+                switch (itemManager.getWrittenMapEnum(player)) {
                     case WRITTENARENANAME:
-                        menuManager.clearMap(player);
-                        menuManager.createNewArena(player);
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.createNewArena(player);
                         break;
                     case WRITTENMINYVALUE:
-                        menuManager.clearMap(player);
-                        menuManager.setMinY(player, arenaMenu.getArenaNamePage(player));
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.setMinY(player);
                         break;
                     case WRITTENMAXYVALUE:
-                        menuManager.clearMap(player);
-                        menuManager.setMaxY(player, arenaMenu.getArenaNamePage(player));
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.setMaxY(player);
                         break;
                     case WRITTENMINPLAYERSVALUE:
-                        menuManager.clearMap(player);
-                        menuManager.setMinPlayers(player, arenaMenu.getArenaNamePage(player));
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.setMinPlayers(player);
                         break;
                     case WRITTENMAXPLAYERSVALUE:
-                        menuManager.clearMap(player);
-                        menuManager.setMaxPlayers(player, arenaMenu.getArenaNamePage(player));
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.setMaxPlayers(player);
                         break;
                     case WRITTENRISETIMEVALUE:
-                        menuManager.clearMap(player);
-                        menuManager.setRiseTime(player, arenaMenu.getArenaNamePage(player));
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.setRiseTime(player);
                         break;
                     case WRITTENGRACETIMEVALUE:
-                        menuManager.clearMap(player);
-                        menuManager.setGraceTime(player, arenaMenu.getArenaNamePage(player));
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.setGraceTime(player);
                         break;
                     case WRITTENSTARTERITEMSVALUE:
-                        menuManager.clearMap(player);
-                        menuManager.setStarterItems(player, arenaMenu.getArenaNamePage(player));
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.setStarterItems(player);
+                        break;
+                    case WRITTENLOOTITEMSVALUE:
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.setLootItems(player);
                         break;
                     case WRITTENBLACKLISTEDBLOCKSVALUE:
-                        menuManager.clearMap(player);
-                        menuManager.setBlacklistedBlocks(player, arenaMenu.getArenaNamePage(player));
+                        arenaMenu.autoClosed = true;
+                        itemManager.clearMap(player);
+                        itemManager.setBlacklistedBlocks(player);
                         break;
                 }
 
                 break;
-            case "cancel": // Closes the menu.
+            /*case "cancel": // Closes the menu.
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaMenu.closeInventory(player);
-                break;
+                break;*/
             case "arenas": // Sends player to the arenas menu
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaMenu.createArenaPages(player, 1);
                 break;
-            case "exit": // Closes the menu, replace with a InventoryCloseEvent.
-                arenaMenu.closeInventory(player);
+            case "exit", "cancel": // Closes the menu, replace with a InventoryCloseEvent.
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
+                arenaMenu.closeInventory(player);
                 break;
             case "go back.": // Sends the player to the previous menu.
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
                 arenaMenu.goBack(player);
                 break;
             case "config": // Sends the player to the config menu.
-                arenaMenu.openSubPage(player, displayName);
                 event.setCancelled(true);
+                arenaMenu.autoClosed = true;
+                arenaMenu.openSubPage(player, displayName);
                 break;
             case "border":
                 event.setCancelled(true);
             default:
-                if (arenaManager.getArenaS().contains(displayName)) {
+                if (arenaManager.getArenas().contains(displayName)) {
                     event.setCancelled(true);
+                    arenaMenu.autoClosed = true;
+                    arenaMenu.closeListPage(player);
                     arenaMenu.openArenaPage(player, arenaManager.getArena(displayName));
                 }
         }

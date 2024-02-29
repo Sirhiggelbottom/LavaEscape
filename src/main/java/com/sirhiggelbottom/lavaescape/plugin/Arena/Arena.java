@@ -92,7 +92,6 @@ public class Arena {
     public void addPlayer(Player player) {
         startingPlayers.add(player);
         players.add(player);
-        // Additional logic for adding a player
     }
 
     public void clearStartingPlayers(){

@@ -7,8 +7,8 @@ import com.sk89q.worldedit.world.block.BlockTypes;
 import net.wesjd.anvilgui.AnvilGUI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -19,7 +19,7 @@ import java.util.*;
 //@ToDo Need to make logic that creates arena menu's based on how many arenas there are. There can only be 12 arenas per page.
 // Remaining: Add logic that figures how to display arenas when there is more than 12 arenas.
 
-public class MenuManager {
+public class ItemManager {
         private final LavaEscapePlugin plugin;
         private final ArenaManager arenaManager;
         private final List<Integer> availableArenaSlots;
@@ -33,10 +33,11 @@ public class MenuManager {
         public Map<UUID, String> writtenRiseTimeValue;
         public Map<UUID, String> writtenGraceTimeValue;
         public Map<UUID, String> writtenStarterItemsValue;
+        public Map<UUID, String> writtenLootItemsValue;
         public Map<UUID, String> writtenBlacklistetBlocksValue;
         public List<Map<UUID, String>> writtenAnvilItemList;
 
-    public MenuManager(LavaEscapePlugin plugin , ArenaManager arenaManager) {
+    public ItemManager(LavaEscapePlugin plugin , ArenaManager arenaManager) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         availableArenaSlots = new ArrayList<>(Arrays.asList(
@@ -51,74 +52,20 @@ public class MenuManager {
         writtenRiseTimeValue = new HashMap<>();
         writtenGraceTimeValue = new HashMap<>();
         writtenStarterItemsValue = new HashMap<>();
+        writtenLootItemsValue = new HashMap<>();
         writtenBlacklistetBlocksValue = new HashMap<>();
 
 
         writtenAnvilItemList = new ArrayList<>(Arrays.asList(writtenArenaName, writtenMinYValue, writtenMaxYValue, writtenMinPlayersValue, writtenMaxPlayersValue,
-                writtenRiseTimeValue, writtenGraceTimeValue, writtenStarterItemsValue, writtenBlacklistetBlocksValue));
+                writtenRiseTimeValue, writtenGraceTimeValue, writtenStarterItemsValue, writtenLootItemsValue, writtenBlacklistetBlocksValue));
     }
 
     public enum MapList{
         WRITTENARENANAME, WRITTENMINYVALUE, WRITTENMAXYVALUE, WRITTENMINPLAYERSVALUE, WRITTENMAXPLAYERSVALUE,
-        WRITTENRISETIMEVALUE, WRITTENGRACETIMEVALUE, WRITTENSTARTERITEMSVALUE, WRITTENBLACKLISTEDBLOCKSVALUE
+        WRITTENRISETIMEVALUE, WRITTENGRACETIMEVALUE, WRITTENSTARTERITEMSVALUE, WRITTENLOOTITEMSVALUE , WRITTENBLACKLISTEDBLOCKSVALUE
     }
 
     private final Map<UUID, Long> lastInteracted = new HashMap<>();
-
-    public void mainMenu(CommandSender sender){
-
-
-        Player player = (Player) sender;
-
-
-        /*List<Integer> usedSlots;
-        int invSize = 27;
-
-        // Adds slots used for buttons to an Array for protection.
-        if(player.hasPermission("lavaescape.admin")){
-            usedSlots = new ArrayList<>(Arrays.asList(11, 13, 15)); // 11 = List arenas, 13 = Create new arena and 15 = Exit the menu.
-        } else usedSlots = new ArrayList<>(Arrays.asList(11, 15));
-
-        Inventory inv = Bukkit.createInventory(null, invSize, ChatColor.DARK_RED.toString() + ChatColor.BOLD + "LAVA Escape: Main menu");
-
-        // Button to list all arenas.
-        ItemStack arenas = new ItemStack(Material.LAVA_BUCKET);
-        int arenasSlot = 11;
-        ItemMeta arenasMeta = arenas.getItemMeta();
-        assert arenasMeta != null;
-        arenasMeta.setDisplayName(ChatColor.RED + "Arenas");
-        arenasMeta.setLore(List.of(ChatColor.GRAY + "List of every arena"));
-        arenas.setItemMeta(arenasMeta);
-
-        inv.setItem(arenasSlot, arenas);
-
-        // If player is an Admin or OP, a "Create New Arena" button appears.
-        if(player.hasPermission("lavaescape.admin")){
-            ItemStack create = new ItemStack(Material.ANVIL);
-            int createSlot = 13;
-            ItemMeta createMeta = arenas.getItemMeta();
-            assert createMeta != null;
-            createMeta.setDisplayName(ChatColor.RED + "Create New Arena");
-            createMeta.setLore(List.of(ChatColor.GRAY + "Creates a new arena"));
-            create.setItemMeta(createMeta);
-
-            inv.setItem(createSlot, create);
-        }
-
-        // Exit button
-        int exitSlot = 15;
-        inv.setItem(exitSlot, getExitItem());
-
-        // For loop for filling up the inventory space around the Arenas, Create new arena and Exit button.
-        for(int i = 0; i < invSize; i++){
-            if(!usedSlots.contains(i)){
-                inv.setItem(i, getBorderItem());
-            }
-        }
-
-        player.openInventory(inv);*/
-
-    }
 
     public void createNewArena(Player player){
         new AnvilGUI.Builder()
@@ -132,19 +79,10 @@ public class MenuManager {
 
                     stateSnapshot.getPlayer().sendMessage(input);
 
-
-
                     if(!input.isBlank() && !input.equalsIgnoreCase("nameless") && !input.equalsIgnoreCase("error, try again")){
-
-                        stateSnapshot.getPlayer().sendMessage("Bukkit UUID: " + player.getUniqueId());
-                        stateSnapshot.getPlayer().sendMessage("stateSnapshot UUID: " + stateSnapshot.getPlayer().getUniqueId());
-
-                        stateSnapshot.getPlayer().sendMessage("\nBukkit UUID and stateSnapshot UUID are equal? " + player.getUniqueId().equals(stateSnapshot.getPlayer().getUniqueId()));
 
                         closeAnvilGuiPage(stateSnapshot.getPlayer());
                         writtenArenaName.put(stateSnapshot.getPlayer().getUniqueId(), stateSnapshot.getText());
-                        stateSnapshot.getPlayer().sendMessage("writtenArenaName contains player? " + writtenArenaName.containsKey(stateSnapshot.getPlayer().getUniqueId()));
-                        stateSnapshot.getPlayer().sendMessage("Written item value: " + writtenArenaName.get(stateSnapshot.getPlayer().getUniqueId()));
 
                         return List.of(AnvilGUI.ResponseAction.openInventory(conformationInv(stateSnapshot.getPlayer(), MapList.WRITTENARENANAME, "null", "null")));
 
@@ -159,7 +97,7 @@ public class MenuManager {
                 .open(openAnvilGuiPage(player));
     }
 
-    public void setMinY(Player player, String arenaName){
+    public void setMinY(Player player){
         new AnvilGUI.Builder()
                 .onClose(stateSnapshot -> closeAnvilGuiPage(stateSnapshot.getPlayer()))
                 .onClick((slot, stateSnapshot)->{
@@ -189,7 +127,7 @@ public class MenuManager {
                 .open(openAnvilGuiPage(player));
     }
 
-    public void setMaxY(Player player, String arenaName){
+    public void setMaxY(Player player){
         new AnvilGUI.Builder()
                 .onClose(stateSnapshot -> closeAnvilGuiPage(stateSnapshot.getPlayer()))
                 .onClick((slot, stateSnapshot)->{
@@ -219,7 +157,7 @@ public class MenuManager {
                 .open(openAnvilGuiPage(player));
     }
 
-    public void setMinPlayers(Player player, String arenaName){
+    public void setMinPlayers(Player player){
         new AnvilGUI.Builder()
                 .onClose(stateSnapshot -> closeAnvilGuiPage(stateSnapshot.getPlayer()))
                 .onClick((slot, stateSnapshot)->{
@@ -249,7 +187,7 @@ public class MenuManager {
                 .open(openAnvilGuiPage(player));
     }
 
-    public void setMaxPlayers(Player player, String arenaName){
+    public void setMaxPlayers(Player player){
         new AnvilGUI.Builder()
                 .onClose(stateSnapshot -> closeAnvilGuiPage(stateSnapshot.getPlayer()))
                 .onClick((slot, stateSnapshot)->{
@@ -279,7 +217,7 @@ public class MenuManager {
                 .open(openAnvilGuiPage(player));
     }
 
-    public void setRiseTime(Player player, String arenaName){
+    public void setRiseTime(Player player){
         new AnvilGUI.Builder()
                 .onClose(stateSnapshot -> closeAnvilGuiPage(stateSnapshot.getPlayer()))
                 .onClick((slot, stateSnapshot)->{
@@ -309,7 +247,7 @@ public class MenuManager {
                 .open(openAnvilGuiPage(player));
     }
 
-    public void setGraceTime(Player player, String arenaName){
+    public void setGraceTime(Player player){
         new AnvilGUI.Builder()
                 .onClose(stateSnapshot -> closeAnvilGuiPage(stateSnapshot.getPlayer()))
                 .onClick((slot, stateSnapshot)->{
@@ -339,7 +277,7 @@ public class MenuManager {
                 .open(openAnvilGuiPage(player));
     }
 
-    public void setStarterItems(Player player, String arenaName){
+    public void setStarterItems(Player player){
         new AnvilGUI.Builder()
                 .onClose(stateSnapshot -> closeAnvilGuiPage(stateSnapshot.getPlayer()))
                 .onClick((slot, stateSnapshot)->{
@@ -370,7 +308,38 @@ public class MenuManager {
                 .open(openAnvilGuiPage(player));
     }
 
-    public void setBlacklistedBlocks(Player player, String arenaName){
+    public void setLootItems(Player player){
+        new AnvilGUI.Builder()
+                .onClose(stateSnapshot -> closeAnvilGuiPage(stateSnapshot.getPlayer()))
+                .onClick((slot, stateSnapshot)->{
+                    if(slot != AnvilGUI.Slot.OUTPUT){
+                        return Collections.emptyList();
+                    }
+
+                    stateSnapshot.getPlayer().sendMessage(stateSnapshot.getText());
+                    UUID playerId = stateSnapshot.getPlayer().getUniqueId();
+
+                    String input = stateSnapshot.getText();
+
+                    if(!input.isBlank() && correctItemMaterialName(input)){
+
+                        closeAnvilGuiPage(stateSnapshot.getPlayer());
+                        writtenLootItemsValue.put(playerId, input);
+
+                        return List.of(AnvilGUI.ResponseAction.openInventory(conformationInv(stateSnapshot.getPlayer(), MapList.WRITTENLOOTITEMSVALUE, "null", "null")));
+                    } else {
+                        return List.of(AnvilGUI.ResponseAction.updateTitle("Error, Try again.", true));
+                    }
+                })
+                .interactableSlots()
+                .itemLeft(getWriteableItem())
+                .text("Item, amount")
+                .title("Add loot item.")
+                .plugin(plugin)
+                .open(openAnvilGuiPage(player));
+    }
+
+    public void setBlacklistedBlocks(Player player){
         new AnvilGUI.Builder()
                 .onClose(stateSnapshot -> closeAnvilGuiPage(stateSnapshot.getPlayer()))
                 .onClick((slot, stateSnapshot)->{
@@ -410,7 +379,11 @@ public class MenuManager {
 
         Material material = Material.getMaterial(inputName);
 
-        return material != null;
+        if(material == null) return false;
+
+        String amount = parts[1].trim().replace(" ", "");
+        Bukkit.broadcastMessage("Amount is: " + amount);
+        return !amount.isEmpty();
     }
 
     private boolean correctBlockMaterialName(String input){
@@ -420,7 +393,7 @@ public class MenuManager {
 
         return block != null;
     }
-    public String parseStartingItem(String rawInput){
+    public String parseItem(String rawInput){
         String[] parts = rawInput.split(",");
         if(parts.length == 0){
             return null;
@@ -437,7 +410,7 @@ public class MenuManager {
         return material.toString();
     }
 
-    public int parseStartingItemAmount(String rawInput){
+    public int parseItemAmount(String rawInput){
         String[] parts = rawInput.split(",");
         if(parts.length == 0){
             return -1;
@@ -519,7 +492,6 @@ public class MenuManager {
     }
 
     public Inventory conformationInv(Player player, MapList writtenMap, String arenaName, String place){
-        UUID playerId = player.getUniqueId();
         int pageSize = 36;
         int infoSlot = 13;
         int confirmSlot = 20;
@@ -572,6 +544,11 @@ public class MenuManager {
                     inv.setItem(infoSlot, getWrittenItem(player, writtenStarterItemsValue));
                     inv.setItem(confirmSlot, getConfirmItem("starterItems"));
                     inv.setItem(tryAgainSlot, getTryAgainItem("starterItems"));
+                    break;
+                case WRITTENLOOTITEMSVALUE:
+                    inv.setItem(infoSlot, getWrittenItem(player, writtenLootItemsValue));
+                    inv.setItem(confirmSlot, getConfirmItem("lootitems"));
+                    inv.setItem(tryAgainSlot, getTryAgainItem("lootitems"));
                     break;
                 case WRITTENBLACKLISTEDBLOCKSVALUE:
                     inv.setItem(infoSlot, getWrittenItem(player, writtenBlacklistetBlocksValue));
@@ -792,23 +769,45 @@ public class MenuManager {
         ItemMeta meta = setArenaItem.getItemMeta();
         if(meta == null) return null;
 
-        List<String> loreInfo = new ArrayList<>();
+        Location pos1 = arenaManager.getArenaLocation(arenaName, "pos1") == null ? null : arenaManager.getArenaLocation(arenaName, "pos1");
+        Location pos2 = arenaManager.getArenaLocation(arenaName, "pos2") == null ? null :  arenaManager.getArenaLocation(arenaName, "pos2");
 
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "arena.pos1.x."));
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "arena.pos1.y."));
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "arena.pos1.z."));
-
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "arena.pos2.x."));
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "arena.pos2.y."));
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "arena.pos2.z."));
-
+        List<String> loreInfo = getStrings(pos1, pos2);
 
         meta.setDisplayName(ChatColor.GOLD + "Set arena area");
         meta.setLore(Arrays.asList(ChatColor.GRAY + "Player gets a selection tool for choosing where the arena is.", ChatColor.GRAY + "Current values:", ChatColor.GRAY + "Pos1 X: " + loreInfo.get(0), ChatColor.GRAY + "Pos1 Y: " + loreInfo.get(1), ChatColor.GRAY + "Pos1 Z: " + loreInfo.get(2),
-                ChatColor.GRAY + "Pos2 X: " + loreInfo.get(3), ChatColor.GRAY + "Pos2 Y: " + loreInfo.get(4), ChatColor.GRAY + "Pos2 Z: " + loreInfo.get(5)));
+                loreInfo.get(3),ChatColor.GRAY + "Pos2 X: " + loreInfo.get(4), ChatColor.GRAY + "Pos2 Y: " + loreInfo.get(5), ChatColor.GRAY + "Pos2 Z: " + loreInfo.get(6)));
         setArenaItem.setItemMeta(meta);
 
         return setArenaItem;
+    }
+
+    private static List<String> getStrings(Location pos1, Location pos2) {
+        List<String> loreInfo = new ArrayList<>();
+
+        if(pos1 != null){
+            loreInfo.add(String.valueOf(pos1.getX()));
+            loreInfo.add(String.valueOf(pos1.getY()));
+            loreInfo.add(String.valueOf(pos1.getZ()));
+        } else {
+            loreInfo.add("");
+            loreInfo.add("");
+            loreInfo.add("");
+        }
+
+        loreInfo.add("");
+
+        if(pos2 != null){
+            loreInfo.add(String.valueOf(pos2.getX()));
+            loreInfo.add(String.valueOf(pos2.getY()));
+            loreInfo.add(String.valueOf(pos2.getZ()));
+        } else {
+            loreInfo.add("");
+            loreInfo.add("");
+            loreInfo.add("");
+
+        }
+        return loreInfo;
     }
 
     public ItemStack getSetLobbyItem(String arenaName){
@@ -816,19 +815,14 @@ public class MenuManager {
         ItemMeta meta = setLobbyItem.getItemMeta();
         if(meta == null) return null;
 
-        List<String> loreInfo = new ArrayList<>();
+        Location pos1 = arenaManager.getLobbyLocation(arenaName, "pos1") == null ? null : arenaManager.getLobbyLocation(arenaName, "pos1");
+        Location pos2 = arenaManager.getLobbyLocation(arenaName, "pos2") == null ? null : arenaManager.getLobbyLocation(arenaName, "pos2");
 
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "lobby.pos1.x."));
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "lobby.pos1.y."));
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "lobby.pos1.z."));
-
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "lobby.pos2.x."));
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "lobby.pos2.y."));
-        loreInfo.add(arenaManager.getConfigValue(arenaName, "lobby.pos2.z."));
+        List<String> loreInfo = getStrings(pos1, pos2);
 
         meta.setDisplayName(ChatColor.DARK_GRAY + "Set lobby area");
         meta.setLore(List.of(ChatColor.GRAY + "Player gets a selection tool for choosing where the lobby is.", ChatColor.GRAY + "Current values:", ChatColor.GRAY + "Pos1 X: " + loreInfo.get(0), ChatColor.GRAY + "Pos1 Y: " + loreInfo.get(1), ChatColor.GRAY + "Pos1 Z: " + loreInfo.get(2),
-                ChatColor.GRAY + "Pos2 X: " + loreInfo.get(3), ChatColor.GRAY + "Pos2 Y: " + loreInfo.get(4), ChatColor.GRAY + "Pos2 Z: " + loreInfo.get(5)));
+                loreInfo.get(3), ChatColor.GRAY + "Pos2 X: " + loreInfo.get(4), ChatColor.GRAY + "Pos2 Y: " + loreInfo.get(5), ChatColor.GRAY + "Pos2 Z: " + loreInfo.get(6)));
         setLobbyItem.setItemMeta(meta);
 
         return setLobbyItem;
@@ -899,8 +893,8 @@ public class MenuManager {
 
         String loreInfo = arenaManager.checkYlevels(arenaName) ? "Arena is ready for generating spawns" : "You haven't set the Y-levels yet!";
 
-        meta.setDisplayName(ChatColor.BLACK + "Generate spawns");
-        meta.setLore(List.of(ChatColor.GRAY + "Generates 150 spawnpoints. \nCurrent status: " + loreInfo));
+        meta.setDisplayName(ChatColor.DARK_AQUA + "Generate spawns");
+        meta.setLore(Arrays.asList(ChatColor.GRAY + "Generates 150 spawnpoints.", "Current status: " + loreInfo));
         generateSpawnsItem.setItemMeta(meta);
 
         return generateSpawnsItem;
@@ -1119,6 +1113,11 @@ public class MenuManager {
                 meta.setLore(List.of(ChatColor.GRAY + "Confirms the inputted starter item."));
                 confirmItem.setItemMeta(meta);
                 break;
+            case "lootitems":
+                meta.setDisplayName(ChatColor.RED + "Confirm loot item");
+                meta.setLore(List.of(ChatColor.GRAY + "Confirms the inputted loot item."));
+                confirmItem.setItemMeta(meta);
+                break;
             case "blacklistedblocks":
                 meta.setDisplayName(ChatColor.RED + "Confirm blacklisted block");
                 meta.setLore(List.of(ChatColor.GRAY + "Confirms the inputted blacklisted block."));
@@ -1163,7 +1162,7 @@ public class MenuManager {
                 meta.setLore(List.of(ChatColor.GRAY + "Lets the player input the " + item + " name again."));
                 tryAgainItem.setItemMeta(meta);
                 break;
-            case "miny", "maxy", "minplayers", "maxplayers", "risetime", "gracetime", "starteritems", "blacklistedblocks":
+            case "miny", "maxy", "minplayers", "maxplayers", "risetime", "gracetime", "starteritems", "lootitems" , "blacklistedblocks":
                 meta.setDisplayName(ChatColor.RED + "Try again");
                 meta.setLore(List.of(ChatColor.GRAY + "Lets the player input the " + item + " value again."));
                 tryAgainItem.setItemMeta(meta);
@@ -1225,7 +1224,27 @@ public class MenuManager {
             return null;
         }
 
-        if(type.equalsIgnoreCase("item")){
+        switch (type.toLowerCase()){
+            case "item":
+                meta.setDisplayName(ChatColor.RED + "Add new starter item");
+                meta.setLore(List.of(ChatColor.GRAY + "Adds new starter item."));
+                newStarterItem.setItemMeta(meta);
+                break;
+            case "lootitem":
+                meta.setDisplayName(ChatColor.RED + "Add new Loot item");
+                meta.setLore(List.of(ChatColor.GRAY + "Adds new loot item"));
+                newStarterItem.setItemMeta(meta);
+                break;
+            case "block":
+                meta.setDisplayName(ChatColor.RED + "Add new blacklisted block");
+                meta.setLore(List.of(ChatColor.GRAY + "Adds new blacklisted block."));
+                newStarterItem.setItemMeta(meta);
+                return newStarterItem;
+        }
+
+
+
+        /*if(type.equalsIgnoreCase("item")){
 
             meta.setDisplayName(ChatColor.RED + "Add new starter item");
             meta.setLore(List.of(ChatColor.GRAY + "Adds new starter item."));
@@ -1237,10 +1256,23 @@ public class MenuManager {
             meta.setLore(List.of(ChatColor.GRAY + "Adds new blacklisted block."));
             newStarterItem.setItemMeta(meta);
 
-        }
+        }*/
 
         return newStarterItem;
 
+    }
+
+    public ItemStack getUpdateArenaItem(){
+        ItemStack reloadItem = new ItemStack(Material.CREEPER_HEAD);
+        ItemMeta meta = reloadItem.getItemMeta();
+        if(meta == null) return null;
+
+        meta.setDisplayName(ChatColor.BLUE + "Update arena");
+        meta.setLore(List.of(ChatColor.GRAY + "Use after you have changed the arena or lobby landscape."));
+
+        reloadItem.setItemMeta(meta);
+
+        return reloadItem;
     }
 
     public ItemStack getStartItem(String arenaName){
@@ -1267,6 +1299,44 @@ public class MenuManager {
         return restartItem;
     }
 
+    public ItemStack getLootchestItem(){
+        ItemStack lootchest = new ItemStack(Material.CHEST);
+        ItemMeta meta = lootchest.getItemMeta();
+        if(meta == null) return null;
+
+        meta.setDisplayName(ChatColor.GOLD + "Get loot chest");
+        meta.setLore(List.of(ChatColor.GRAY + "A Loot chest! Wonder what's inside?"));
+        lootchest.setItemMeta(meta);
+
+        return lootchest;
+    }
+
+    public ItemStack getLootchestConfigItem(){
+        ItemStack lootchestConfig = new ItemStack(Material.CHEST);
+        ItemMeta meta = lootchestConfig.getItemMeta();
+        if(meta == null) return null;
+
+        meta.setDisplayName(ChatColor.GOLD + "Loot chest config");
+        meta.setLore(List.of(ChatColor.GRAY + "Config loot items inside the loot chest."));
+        lootchestConfig.setItemMeta(meta);
+
+        return lootchestConfig;
+    }
+
+    public ItemStack getExitLootplacementModeItem(){
+        ItemStack exitLootplacementModeItem = new ItemStack(Material.BARRIER);
+        ItemMeta meta = exitLootplacementModeItem.getItemMeta();
+        if(meta == null) return null;
+
+        meta.setDisplayName("Stop lootchest placement");
+        meta.setLore(List.of(ChatColor.GRAY + "Exits the lootchest placement mode"));
+
+        exitLootplacementModeItem.setItemMeta(meta);
+
+        return exitLootplacementModeItem;
+
+    }
+
     public int parseValueToInt(Player player){
         UUID playerId = player.getUniqueId();
         String rawValue;
@@ -1289,7 +1359,7 @@ public class MenuManager {
         return slotIndexes;
     }
     private int amountOfPages(){
-        int totalAmountOfArenas = arenaManager.getArenaS().size();
+        int totalAmountOfArenas = arenaManager.getArenas().size();
         return (totalAmountOfArenas + amountOfArenasPerPage - 1) / amountOfArenasPerPage;
     }
 

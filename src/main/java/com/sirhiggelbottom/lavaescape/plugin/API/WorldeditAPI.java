@@ -32,13 +32,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.UUID;
 
 
 public class WorldeditAPI {
     private final LavaEscapePlugin plugin;
     private final ArenaManager arenaManager;
-
     private final ConfigManager configManager;
 
 
@@ -47,25 +45,118 @@ public class WorldeditAPI {
         this.arenaManager = arenaManager;
         this.configManager = configManager;
     }
-    public void saveArenaRegionAsSchematic(Player player, String arenaName){
-        Arena arena = arenaManager.getArena(arenaName);
-        UUID playerId = player.getUniqueId();
 
-        if (arena == null || arena.getArenaLoc1() == null || arena.getArenaLoc2() == null) {
-            player.sendMessage("Arena locations not set or arena does not exist.");
+
+    // Not in use
+    /*public void findLootChests(String arenaName){
+        World world = loadWorld(arenaName);
+
+        Clipboard clipboard = loadArenaSchematic(arenaName, null);
+
+        BlockVector3 minPoint = clipboard.getMinimumPoint();
+        BlockVector3 maxPoint = clipboard.getMaximumPoint();
+
+        CuboidRegion region = new CuboidRegion(world, minPoint, maxPoint);
+
+        int height = region.getHeight();
+        int length = region.getLength();
+        int width = region.getWidth();
+
+        Bukkit.broadcastMessage("Region min point: " + minPoint);
+        Bukkit.broadcastMessage("Region max point: " + maxPoint);
+        Bukkit.broadcastMessage("Area height, length and width: " + height + ", " + length + ", " + width);
+
+        Block block;
+        org.bukkit.World bukkitWorld = BukkitAdapter.adapt(world);
+        Arena arena = arenaManager.getArena(arenaName);
+        List<Location> lootChestLocations = new ArrayList<>();
+
+        for(int y = minPoint.getBlockY(); y <= minPoint.getBlockY() + height; y++){
+            for(int x = minPoint.getBlockX(); x <= minPoint.getBlockX() + length; x++){
+                for(int z = minPoint.getBlockZ(); z <= minPoint.getBlockZ() + width; z++){
+                    block = bukkitWorld.getBlockAt(x, y, z);
+                    if(block.hasMetadata("Lootchest")){
+                        Bukkit.broadcastMessage("Lootchest found");
+                        lootChestLocations.add(new Location(bukkitWorld, x, y, z));
+                    }
+                }
+            }
+        }
+
+        arenaManager.lootChestLocations.put(arena, lootChestLocations);
+
+        if(arenaManager.lootChestLocations.get(arena).isEmpty()){
+            Bukkit.broadcastMessage("Error, couldn't find any loot chests");
             return;
         }
 
-        Location pos1 = arena.getArenaLoc1();
-        Location pos2 = arena.getArenaLoc2();
-        WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
+        Bukkit.broadcastMessage("Number of lootchests found: " + arenaManager.lootChestLocations.get(arena).size());
 
-        if (worldEdit == null) {
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        String path = "arenas." + arenaName + ".lootchest-locations.";
+        int posIndex = 1;
+
+        for(Map.Entry<Arena, List<Location>> entry : arenaManager.lootChestLocations.entrySet()){
+            List<Location> locations = entry.getValue();
+
+            for(Location location : locations){
+                configurationSection.set(path + "pos" + posIndex + ".x", location.getBlockX());
+                configurationSection.set(path + "pos" + posIndex + ".y", location.getBlockY());
+                configurationSection.set(path + "pos" + posIndex + ".z", location.getBlockZ());
+                posIndex++;
+            }
+        }
+
+        arenaManager.tryLogging(configManager::saveArenaConfig, "Error, couldn't save the locations of the lootchests");
+
+    }*/
+
+    public void saveArenaRegionAsSchematic(Player player, String arenaName, boolean reloadSchematic){
+
+        if(arenaManager.getArena(arenaName) == null){
+            player.sendMessage("Arena doesn't exist.");
+            return;
+        }
+
+        Arena arena = arenaManager.getArena(arenaName);
+
+        Location pos1;
+        Location pos2;
+
+        if(reloadSchematic){
+           pos1 =  arenaManager.getLocationFromConfig(arenaName, "arena", "pos1");
+           pos2 = arenaManager.getLocationFromConfig(arenaName, "arena", "pos2");
+
+           if(pos1 == null || pos2 == null) {
+               player.sendMessage("Error, couldn't load arena positions!");
+               return;
+           }
+
+        } else {
+
+            if (arena.getArenaLoc1() == null || arena.getArenaLoc2() == null) {
+                player.sendMessage("Arena locations are not set.");
+                return;
+            } else {
+                pos1 = arena.getArenaLoc1();
+                pos2 = arena.getArenaLoc2();
+            }
+
+        }
+
+        if(Bukkit.getServer().getPluginManager().getPlugin("WorldEdit") == null){
             player.sendMessage("WorldEdit not found.");
             return;
         }
 
-        // Set or create shared directory for all the arenas
+        /*WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
+
+        if (worldEdit == null) {
+            player.sendMessage("WorldEdit not found.");
+            return;
+        }*/
+
+        // Set or create shared directory for all arenas
         File schematicDirs = getDirectories();
         if (!schematicDirs.exists() && !schematicDirs.mkdirs()) {
             player.sendMessage("Error creating schematics directory.");
@@ -75,15 +166,13 @@ public class WorldeditAPI {
         // Set or create directory for specific arena
         File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
         if (!schematicDir.exists() && !schematicDir.mkdirs()) {
-            player.sendMessage("Error creating schematic directory.");
+            player.sendMessage("Error creating schematic directory for: " + arenaName);
             return;
         }
 
         File schematicFile = new File(schematicDir, arenaName + ".schem");
 
         World world = loadWorld(arenaName);
-
-        //World world = BukkitAdapter.adapt(player.getWorld());
 
         if(world != null){
             BlockVector3 point1 = BlockVector3.at(pos1.getX(), pos1.getY(), pos1.getZ());
@@ -93,8 +182,7 @@ public class WorldeditAPI {
             Clipboard clipboard = new BlockArrayClipboard(region);
 
             ForwardExtentCopy forwardExtentCopy = new ForwardExtentCopy(
-                    world, region, clipboard, region.getMinimumPoint()
-            );
+                    world, region, clipboard, region.getMinimumPoint());
 
             try {
                 Operations.complete(forwardExtentCopy);
@@ -118,9 +206,46 @@ public class WorldeditAPI {
 
     }
 
-    public void saveLobbyRegionAsSchematic(Player player, String arenaName){
+    public void saveLobbyRegionAsSchematic(Player player, String arenaName, boolean reloadSchematic){
+
+        if(arenaManager.getArena(arenaName) == null){
+            player.sendMessage("Arena doesn't exist.");
+            return;
+        }
+
         Arena arena = arenaManager.getArena(arenaName);
-        UUID playerId = player.getUniqueId();
+
+        Location pos1;
+        Location pos2;
+
+        if(reloadSchematic){
+            pos1 =  arenaManager.getLocationFromConfig(arenaName, "lobby", "pos1");
+            pos2 = arenaManager.getLocationFromConfig(arenaName, "lobby", "pos2");
+
+            if(pos1 == null || pos2 == null) {
+                player.sendMessage("Error, couldn't load lobby positions!");
+                return;
+            }
+
+        } else {
+
+            if (arena.getLobbyLoc1() == null || arena.getLobbyLoc2() == null) {
+                player.sendMessage("lobby locations are not set.");
+                return;
+            } else {
+                pos1 = arena.getLobbyLoc1();
+                pos2 = arena.getLobbyLoc2();
+            }
+
+        }
+
+        if(Bukkit.getServer().getPluginManager().getPlugin("WorldEdit") == null){
+            player.sendMessage("WorldEdit not found.");
+            return;
+        }
+
+
+        /*Arena arena = arenaManager.getArena(arenaName);
 
         if (arena == null || arena.getLobbyLoc1() == null || arena.getLobbyLoc2() == null) {
             player.sendMessage("Lobby locations not set or arena does not exist.");
@@ -128,24 +253,30 @@ public class WorldeditAPI {
         }
 
         Location pos1 = arena.getLobbyLoc1();
-        Location pos2 = arena.getLobbyLoc2();
+        Location pos2 = arena.getLobbyLoc2();*/
 
         WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
         if (worldEdit == null) {
             player.sendMessage("WorldEdit not found.");
             return;
         }
-        // Set or create shared directory for all the arenas
+
+        // Set or create shared directory for all arenas
         File schematicDirs = getDirectories();
-        if (!schematicDirs.exists() && !schematicDirs.mkdirs()) {
-            player.sendMessage("Error creating schematics directory.");
-            return;
+        if (!schematicDirs.exists()) {
+            if(!schematicDirs.mkdirs()){
+                player.sendMessage("Error creating schematics directory.");
+                return;
+            }
         }
+
         // Set or create directory for specific arena
         File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
-        if (!schematicDir.exists() && !schematicDir.mkdirs()) {
-            player.sendMessage("Error creating schematic directory.");
-            return;
+        if (!schematicDir.exists()) {
+            if(!schematicDir.mkdirs()){
+                player.sendMessage("Error creating schematic directory for: " + arenaName);
+                return;
+            }
         }
 
         File schematicFile = new File(schematicDir, arenaName + "_lobby" + ".schem");
@@ -184,7 +315,7 @@ public class WorldeditAPI {
         return new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics");
     }
 
-    public void deleteSchematic(CommandSender sender,String arenaName, String area) {
+    public void deleteSchematic(CommandSender sender, String arenaName, String area) {
         Player player = (Player) sender;
         Arena arena = arenaManager.getArena(arenaName);
         File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
@@ -193,24 +324,32 @@ public class WorldeditAPI {
 
         WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
 
-        if (arena == null || !arenaSchematicFile.exists() || !lobbySchematicFile.exists() || worldEdit == null) {
-            player.sendMessage("Error: Arena / Lobby not found, file does not exist, or WorldEdit not found.");
+        if (arena == null) {
+            player.sendMessage("Error: Arena not found.");
+            return;
+        } else if (worldEdit == null) {
+            player.sendMessage("Error: WorldEdit not found.");
+            return;
+        } else if(!schematicDir.exists() || !schematicDir.isDirectory()){
+            player.sendMessage("Error: Schematic directory not present.");
             return;
         }
-    if(area.equalsIgnoreCase("arena")){
-        if (arenaSchematicFile.delete()) {
-            player.sendMessage("Schematic deleted successfully.");
-        } else {
-            player.sendMessage("Error: Could not delete the schematic.");
-        }
-    } else if(area.equalsIgnoreCase("lobby")){
 
-        if (lobbySchematicFile.delete()) {
-            player.sendMessage("Schematic deleted successfully.");
+        if(arenaSchematicFile.exists() && arenaSchematicFile.isFile() && lobbySchematicFile.exists() && lobbySchematicFile.isFile()){
+            if(arenaSchematicFile.delete() && lobbySchematicFile.delete()){
+                schematicDir.delete();
+            }
+        } else if(arenaSchematicFile.exists() && arenaSchematicFile.isFile() && !lobbySchematicFile.exists() && !lobbySchematicFile.isFile()){
+            if(arenaSchematicFile.delete()){
+                schematicDir.delete();
+            }
+        } else if (!arenaSchematicFile.exists() && !arenaSchematicFile.isFile() && lobbySchematicFile.exists() && lobbySchematicFile.isFile()) {
+            if(lobbySchematicFile.delete()){
+                schematicDir.delete();
+            }
         } else {
-            player.sendMessage("Error: Could not delete the schematic.");
+            player.sendMessage("Error, no schematics present");
         }
-    }
 
     }
 
@@ -236,7 +375,10 @@ public class WorldeditAPI {
         File schematicFile = new File(schematicDir, arenaName + ".schem");
 
         if (!schematicFile.exists()) {
-            sender.sendMessage("schematic doesn't exist");
+            // Or handle this case as needed
+            if(sender != null){
+                sender.sendMessage("schematic doesn't exist");
+            }
             return null; // Or handle this case as needed
         }
 
@@ -246,7 +388,9 @@ public class WorldeditAPI {
         try (ClipboardReader reader = format.getReader(new FileInputStream(schematicFile))){
             clipboard = reader.read();
             }catch (Exception e){
-                sender.sendMessage("Error saving schematic: " + e.getMessage());
+                if(sender != null){
+                    sender.sendMessage("Error saving schematic: " + e.getMessage());
+                }
                 e.printStackTrace();
                 return null;
             }
@@ -258,6 +402,7 @@ public class WorldeditAPI {
     public Clipboard loadLobbySchematic(String arenaName, CommandSender sender) {
         File schematicDir = new File (plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
         File schematicFile = new File(schematicDir, arenaName + "_lobby" + ".schem");
+
         sender.sendMessage("Trying to load: " + schematicFile);
 
         if (!schematicFile.exists()) {

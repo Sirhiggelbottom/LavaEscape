@@ -3,6 +3,7 @@ package com.sirhiggelbottom.lavaescape.plugin.managers;
 import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.regions.CuboidRegion;
@@ -14,6 +15,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.Location;
 
@@ -25,35 +27,47 @@ public class ArenaManager {
     private final LavaEscapePlugin plugin;
     private final ConfigManager configManager;
     private final Map<String, Arena> arenaNames;
-    private final WorldeditAPI worldeditAPI;
+    private final WorldeditAPI worldEditAPI;
     private List<Location> usedSpawns;
     private final Arena arena;
     private HashMap<UUID, List<ItemStack>> playerItems;
     private HashMap<UUID, Integer> playerExp;
     public Map<String, List<ItemStack>> startingItemsMap;
+    public Map<String, List<ItemStack>> lootItemsMap;
     public Map<String, List<ItemStack>> blacklistedBlocksMap;
     public Map<UUID, String> writtenArenaLocation1;
     public Map<UUID, String> writtenArenaLocation2;
     public Map<UUID, String> writtenLobbyLocation1;
     public Map<UUID, String> writtenLobbyLocation2;
-    public String currentGameMode;
+    public Map<Arena, List<Location>> lootChestLocations;
+    public Map<UUID, List<Location>> openLootchests;
+    private Location arenaPos1;
+    private Location arenaPos2;
+    private Location lobbyPos1;
+    private Location lobbyPos2;
+
     private boolean globalPvPMode;
+    private final Random random;
     public ArenaManager(LavaEscapePlugin plugin, ConfigManager configManager, Arena arena) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.arena = arena;
         this.arenaNames = new HashMap<>();
-        this.worldeditAPI = new WorldeditAPI(plugin, this, configManager);
+        this.worldEditAPI = new WorldeditAPI(plugin, this, configManager);
         usedSpawns = new ArrayList<>();
         playerItems = new HashMap<>();
         playerExp = new HashMap<>();
         startingItemsMap = new HashMap<>();
+        lootItemsMap = new HashMap<>();
         blacklistedBlocksMap = new HashMap<>();
         writtenArenaLocation1 = new HashMap<>();
         writtenArenaLocation2 = new HashMap<>();
         writtenLobbyLocation1 = new HashMap<>();
         writtenLobbyLocation2 = new HashMap<>();
+        lootChestLocations = new HashMap<>();
+        openLootchests = new HashMap<>();
         globalPvPMode = getPvpMode();
+        random = new Random();
         loadArenas();
     }
     private void loadArenas() {
@@ -66,27 +80,6 @@ public class ArenaManager {
                 this.arenaNames.put(arenaName, arena);
             }
         }
-    }
-    // Method not in use
-    private Arena loadArena(String arenaName) {
-        ConfigurationSection section = configManager.getArenaConfig().getConfigurationSection("arenas." + arenaName);
-        if (section == null) return null;
-
-        // Load arena and lobby locations
-        Location arenaLoc1 = getLocationFromSection(section, "arena.pos1");
-        Location arenaLoc2 = getLocationFromSection(section, "arena.pos2");
-        Location lobbyLoc1 = getLocationFromSection(section, "lobby.pos1");
-        Location lobbyLoc2 = getLocationFromSection(section, "lobby.pos2");
-
-        return new Arena(arenaName, arenaLoc1, arenaLoc2, lobbyLoc1, lobbyLoc2);
-    }
-    // Called by a method that is not in use, will probably throw an error when executed.
-    private Location getLocationFromSection(ConfigurationSection section, String path) {
-        World world = plugin.getServer().getWorld(section.getString(path + ".world"));
-        int x = section.getInt(path + ".x");
-        int y = section.getInt(path + ".y");
-        int z = section.getInt(path + ".z");
-        return new Location(world, x, y, z);
     }
     public void createArena(String arenaName, World world) {
 
@@ -101,7 +94,7 @@ public class ArenaManager {
     public void saveTheArena(Arena arena){
         String basePath = "arenas." + arena.getName();
         saveLocationToConfig(basePath + ".arena.pos1", arena.getArenaLoc1());
-        saveLocationToConfig(basePath + ".arena.pos2", arena.getArenaLoc2());;
+        saveLocationToConfig(basePath + ".arena.pos2", arena.getArenaLoc2());
         configManager.saveArenaConfig();
     }
     public void saveTheLobby(Arena arena){
@@ -112,12 +105,14 @@ public class ArenaManager {
     }
     public void saveNewArena(Arena arena, String worldName){
         // Setting arena path in arena.yml file
+        String globalSettings = "Global settings.";
         String basePath = "arenas." + arena.getName();
         String playersPath = basePath + ".players";
         String yLevelPath = basePath + ".Y-levels";
         String timePath = basePath + ".timeValues";
         String modePath = basePath + ".mode";
         String itemPath = basePath + ".start-items";
+        String lootPath = basePath + ".loot-items";
         String blockPath = basePath + ".blacklisted-blocks";
 
         List<String> defaultBlacklistedBlocks = new ArrayList<>();
@@ -153,13 +148,17 @@ public class ArenaManager {
             configurationSection.set(timePath + ".lavadelay", 5);
             // Set gamemode to server (Repeating) mode by default.
             configurationSection.set(modePath, "server");
-            // Set default starting items.
 
+            // Set default starting items.
             configurationSection.set(itemPath + ".STONE_SWORD" , 1);
             configurationSection.set(itemPath + ".STONE_PICKAXE" , 1);
             configurationSection.set(itemPath + ".BAKED_POTATO" , 5);
-
+            // Set default loot items.
+            configurationSection.set(lootPath + ".GOLDEN_APPLE", 1);
+            // Set default blacklisted block.
             configurationSection.set(blockPath, defaultBlacklistedBlocks);
+
+            configurationSection.get(globalSettings + ".PvPMode." , false);
 
         }, "An error occurred while assigning placeholder values to new arena in arena.yml");
 
@@ -192,7 +191,6 @@ public class ArenaManager {
     public void changeCurrentPvPMode(){
         globalPvPMode = !globalPvPMode;
     }
-
     public boolean getCurrentPvPMode(){
         return globalPvPMode;
     }
@@ -201,7 +199,7 @@ public class ArenaManager {
         String yLevelPath = basePath + ".Y-levels.Ymin";
         int y_level;
 
-        Clipboard clipboard = worldeditAPI.loadArenaSchematic(arenaName, player);
+        Clipboard clipboard = worldEditAPI.loadArenaSchematic(arenaName, player);
         CuboidRegion region = (CuboidRegion) clipboard.getRegion();
         BlockVector3 point = region.getMinimumPoint();
         int minY = point.getY();
@@ -226,7 +224,7 @@ public class ArenaManager {
 
         int y_level;
 
-        Clipboard clipboard = worldeditAPI.loadArenaSchematic(arenaName, player);
+        Clipboard clipboard = worldEditAPI.loadArenaSchematic(arenaName, player);
         CuboidRegion region = (CuboidRegion) clipboard.getRegion();
         BlockVector3 point = region.getMaximumPoint();
         int maxY = point.getY();
@@ -255,12 +253,12 @@ public class ArenaManager {
             configurationSection.set(itemPath + item, amount);
             configManager.saveArenaConfig();
 
-            updateInMemoryItemList(arenaName);
+            updateInMemoryStartingItemList(arenaName);
 
             player.sendMessage("Added: " + amount + " " + item + " to starting items.");
         }, "An error occurred while adding starter item to arena.yml");
     }
-    private void updateInMemoryItemList(String arenaName){
+    private void updateInMemoryStartingItemList(String arenaName){
         List<ItemStack> updatedItems = getStarterItems(arenaName);
         setStartingItems(arenaName, updatedItems);
     }
@@ -319,9 +317,106 @@ public class ArenaManager {
 
             configManager.saveArenaConfig();
 
-            updateInMemoryItemList(arenaName);
+            updateInMemoryStartingItemList(arenaName);
 
         }, "An error occurred while removing starter item from arena.yml");
+    }
+    public void setLootItem (String arenaName, String item, int amount, Player player){
+        String basePath = "arenas." + arenaName;
+        String lootItemPath = basePath + ".loot-items.";
+
+        tryLogging(() -> {
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+            configurationSection.set(lootItemPath + item, amount);
+            configManager.saveArenaConfig();
+
+            updateInMemoryLootItemList(arenaName);
+
+            player.sendMessage("Added: " + amount + " " + item + " to loot items.");
+        }, "An error occurred while adding loot item to arena.yml");
+    }
+    private void updateInMemoryLootItemList(String arenaName){
+        List<ItemStack> updatedItems = getLootingItems(arenaName);
+        setLootItems(arenaName, updatedItems);
+    }
+    private void setLootItems(String arenaName, List<ItemStack> items){
+        this.lootItemsMap.put(arenaName, items);
+    }
+    public List<ItemStack> getLootItems(String arenaName){
+        if(this.lootItemsMap.get(arenaName) == null){
+            return getLootingItems(arenaName);
+        } else return this.lootItemsMap.get(arenaName);
+    }
+    public List<ItemStack> getLootingItems(String arenaName){
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+        String basePath = "arenas." + arenaName + ".loot-items";
+        ConfigurationSection config = arenaConfig.getConfigurationSection(basePath);
+        List<ItemStack> items = new ArrayList<>();
+        if(config != null){
+
+            Map<String, Object> objects = config.getValues(false);
+
+            for(Map.Entry<String, Object> entry : objects.entrySet()){
+                if(entry.getValue() instanceof Integer){
+                    Material material = Material.getMaterial(entry.getKey());
+                    if(material != null){
+                        ItemStack item = new ItemStack(material, (Integer) entry.getValue());
+                        items.add(item);
+                    }
+                }
+            }
+        }
+
+        return items;
+    }
+    public void deleteLootItem(String arenaName, String item, Player player){
+        String basePath = "arenas." + arenaName;
+        String lootItemPath = basePath + ".loot-items";
+
+
+
+
+        tryLogging(() -> {
+            ConfigurationSection configurationSection = configManager.getArenaConfig();
+            Map<String, Object> lootItems = configManager.getArenaConfig().getConfigurationSection(lootItemPath).getValues(false);
+
+            String cleanedItem = parseDeleteItem(item);
+
+            if(lootItems.containsKey(cleanedItem)){
+                lootItems.remove(cleanedItem);
+                player.sendMessage("Deleted: " + cleanedItem + " from loot items.");
+            }
+
+
+            configurationSection.set(lootItemPath, null);
+
+            configurationSection.createSection(lootItemPath, lootItems);
+
+            configManager.saveArenaConfig();
+
+            updateInMemoryLootItemList(arenaName);
+
+        }, "An error occurred while removing loot item from arena.yml");
+    }
+    public void spawnLootItems(Inventory inv, String arenaName){
+        // Checks if the list of loot items is empty
+        if(getLootItems(arenaName).isEmpty()){
+            Bukkit.broadcastMessage("Error, there is no loot!");
+            Bukkit.broadcastMessage("Tell the admin to check the arena config!");
+            return;
+        }
+
+        // Since Worldedit can save the contents of chest, this method clears the inventory to avoid problems.
+        inv.clear();
+
+        // Shuffles the loot item lists, and chooses a random amount of items from that list to add to the loot chest.
+        Collections.shuffle(getLootItems(arenaName));
+        int itemsInChest = 1 + random.nextInt(getLootItems(arenaName).size());
+
+        for(int i = 0; i < itemsInChest; i++){
+            inv.addItem(getLootItems(arenaName).get(i).clone());
+        }
     }
     private String parseDeleteItem(String item){
         String[] rawString = item.split("\\{");
@@ -511,19 +606,19 @@ public class ArenaManager {
             return;
         }
 
-        arenaNames.remove(arenaName);
-
         String basePath = "arenas." + arenaName;
 
         configManager.getArenaConfig().set(basePath,null);
         configManager.getSpawnPointConfig().set(basePath, null);
-        worldeditAPI.deleteSchematic(sender, arenaName, "arena");
-        worldeditAPI.deleteSchematic(sender, arenaName, "lobby");
+        worldEditAPI.deleteSchematic(sender, arenaName, "both");
+        /*worldeditAPI.deleteSchematic(sender, arenaName, "arena");
+        worldeditAPI.deleteSchematic(sender, arenaName, "lobby");*/
+        arenaNames.remove(arenaName);
         configManager.saveArenaConfig();
+        configManager.saveSpawnPointConfig();
 
     }
     private void saveLocationToConfig(String path, Location location) {
-        //configManager.getArenaConfig().set(path + ".world", location.getWorld().getName());
         configManager.getArenaConfig().set(path + ".x", location.getBlockX());
         configManager.getArenaConfig().set(path + ".y", location.getBlockY());
         configManager.getArenaConfig().set(path + ".z", location.getBlockZ());
@@ -542,7 +637,12 @@ public class ArenaManager {
         if (arena != null) {
             arena.removePlayer(player);
             isGameOver(arenaName);
-            // Additional logic for removing player from arena can be implemented here
+        }
+    }
+    public void stopLootChestPlacement(String arenaName, Player player){
+        Arena arena = arenaNames.get(arenaName);
+        if (arena != null) {
+            arena.removePlayer(player);
         }
     }
     public void isGameOver(String arenaName){
@@ -563,10 +663,10 @@ public class ArenaManager {
             teleportLobby(winner, arenaName);
 
             // Resets the arena
-            worldeditAPI.placeSchematic(winner, arenaName);
+            worldEditAPI.placeSchematic(winner, arenaName);
 
             Bukkit.broadcastMessage("The winner is: " + winnerName);
-
+            openLootchests.clear();
             arena.removePlayer(winner);
             arena.clearStartingPlayers();
 
@@ -632,6 +732,15 @@ public class ArenaManager {
         String basePath = "arenas." + arena.getName() + ".players";
         return configManager.getArenaConfig().getInt(basePath + ".maxPlayers", 10); // Default to 10
     }
+
+    public Location getLobbyPos1() {
+        return lobbyPos1;
+    }
+
+    public void setLobbyPos1(Location lobbyPos1) {
+        this.lobbyPos1 = lobbyPos1;
+    }
+
     public enum GameState {
         STANDBY,
         WAITING,
@@ -643,7 +752,7 @@ public class ArenaManager {
     public Arena getArena(String arenaName) {
         return arenaNames.get(arenaName);
     }
-    public List<String> getArenaS() {
+    public List<String> getArenas() {
         List<String> arenaNames;
         ConfigurationSection arenasSection = configManager.getArenaConfig().getConfigurationSection("arenas.");
         if (arenasSection != null) {
@@ -652,7 +761,7 @@ public class ArenaManager {
         return arenaNames;
     }
     public Arena findPlayerArena(Player player){
-        List<String> arenaNames = getArenaS();
+        List<String> arenaNames = getArenas();
         if(arenaNames != null){
             for(String arenaName : arenaNames){
                 Arena arena = getArena(arenaName);
@@ -673,10 +782,6 @@ public class ArenaManager {
 
         tryLogging(() -> configManager.getSpawnPointConfig().createSection(basePath),
                 "an error occurred while creating a new section in spawnPoint.yml");
-
-        /*// Sets the arena name
-        tryLogging(() -> configManager.getSpawnPointConfig().set(basePath + ".name", arena.getName()),
-                "an error occurred while assigning a name to new arena in spawnPoint.yml");*/
 
         ConfigurationSection configurationSection = configManager.getSpawnPointConfig();
         int index = 1;
@@ -745,7 +850,7 @@ public class ArenaManager {
         String basepath = "arenas." + arena.getName();
         ConfigurationSection configurationSection = configManager.getArenaConfig();
 
-        Clipboard clipboard = worldeditAPI.loadArenaSchematic(arena.getName(), (CommandSender) player);
+        Clipboard clipboard = worldEditAPI.loadArenaSchematic(arena.getName(), (CommandSender) player);
         CuboidRegion region = (CuboidRegion) clipboard.getRegion();
         BlockVector3 point1 = region.getMinimumPoint();
         int minY = point1.getY();
@@ -772,7 +877,6 @@ public class ArenaManager {
         player.sendMessage("Ymax-level set to Ylevel: " + i);
         return true;
     }
-
     public List<Location> findSpawnPoints(String arenaName, CommandSender sender) {
         Arena arena = getArena(arenaName);
 
@@ -781,8 +885,6 @@ public class ArenaManager {
             return null;
         }
 
-
-
         Player player = (Player) sender;
         World world = player.getWorld();
 
@@ -790,31 +892,19 @@ public class ArenaManager {
         String yLevelPath = basePath + ".Y-levels";
         FileConfiguration config = configManager.getArenaConfig();
 
-
-
         int Ymax = config.getInt(yLevelPath + ".Ymax");
         int Ymin = config.getInt(yLevelPath + ".Ymin");
 
         // Load the schematic and calculate the volume
-        Clipboard clipboard = worldeditAPI.loadArenaSchematic(arenaName, sender);
+        Clipboard clipboard = worldEditAPI.loadArenaSchematic(arenaName, sender);
         CuboidRegion region = (CuboidRegion) clipboard.getRegion();
-
-
-
-        /*// Adjust the volume for the Y-level range
-        int height = Ymax - Ymin + 1;
-        int length = region.getLength();
-        int width = region.getWidth();
-        int searchSpaceVolume = length * width * height; // Adjusted volume for Y-range*/
 
         int height = Ymax - Ymin + 1;
         int length = region.getLength();
         int width = region.getWidth();
         int searchSpaceVolume = length * width * height;
 
-
         sender.sendMessage("Number of blocks to iterate through: " + searchSpaceVolume);
-
 
         // Ensure we have the region's minimum point to adjust coordinates
         BlockVector3 minPoint = region.getMinimumPoint();
@@ -829,8 +919,6 @@ public class ArenaManager {
             for (int z = minPoint.getBlockZ(); z <= minPoint.getBlockZ() + width; z++) {
                 for (int y = Ymin; y <= Ymax; y++) {
                     Block block = world.getBlockAt(x, y, z);
-                    Block space1 = world.getBlockAt(x, y + 1, z);
-                    Block space2 = world.getBlockAt(x, y + 2, z);
 
                     if (isValidSpawnPoint(block)) {
                         potentialSpawnPoints.add(block.getLocation());
@@ -845,7 +933,6 @@ public class ArenaManager {
                 }
             }
         }
-
 
         Collections.shuffle(potentialSpawnPoints); // Shuffle to randomize the spawn points
 
@@ -913,7 +1000,6 @@ public class ArenaManager {
         }
 
     }
-
     public void checkOnlinePlayers(String arenaName){
         Set<Player> onlinePlayers = new HashSet<>(Bukkit.getOnlinePlayers());
 
@@ -922,14 +1008,12 @@ public class ArenaManager {
                 arena.removeStartingPlayer(startingPlayer);
             }
         }
-
         for(Player activePlayer : getPlayersInArena(arenaName)){
             if(!onlinePlayers.contains(activePlayer)){
                 arena.removePlayer(activePlayer);
             }
         }
     }
-
     public void teleportLobby(CommandSender sender, String arenaName) {
         if (!(sender instanceof Player)) {
             sender.sendMessage("This command can only be used by a player.");
@@ -945,7 +1029,7 @@ public class ArenaManager {
             return;
         }
 
-        Clipboard clipboard = worldeditAPI.loadLobbySchematic(arenaName, sender);
+        Clipboard clipboard = worldEditAPI.loadLobbySchematic(arenaName, sender);
         if (clipboard == null) {
             sender.sendMessage("Failed to load schematic.");
             return;
@@ -1044,46 +1128,330 @@ public class ArenaManager {
         return configManager.getArenaConfig().getString(basePath, "none");
     }
 
-    /*public List<ItemStack> getBlacklistedBlocks(String arenaName){
+    public Location getLocationFromConfig(String arenaName, String area, String position){
+
+        String path = area.equalsIgnoreCase("arena") ? "arenas." + arenaName + ".arena." + position : "arenas." + arenaName + ".lobby." + position; // Path is defined based on which area is set when method is called.
         FileConfiguration arenaConfig = configManager.getArenaConfig();
-        String basePath = "arenas." + arenaName + ".blacklisted-blocks";
-        List<String> blockNames = arenaConfig.getStringList(basePath);
-        List<ItemStack> blocks = new ArrayList<>();
 
-        Bukkit.broadcastMessage("Blacklisted blocks path is: " + basePath);
-
-        if(blockNames.isEmpty()){
-            Bukkit.broadcastMessage("Couldn't find the blacklisted blocks name list.");
+        if(arenaConfig.getConfigurationSection(path) == null){
+            Bukkit.broadcastMessage("Error couldn't load: " + path);
             return null;
         }
 
-        for(String blockName : blockNames){
-            Material material = Material.getMaterial(blockName);
-            if(material != null){
-                ItemStack block = new ItemStack(material);
-                blocks.add(block);
+        ConfigurationSection areaSection = arenaConfig.getConfigurationSection(path);
+
+        Arena arena = getArena(arenaName);
+        if(arena == null) return null;
+        World world = BukkitAdapter.adapt(worldEditAPI.loadWorld(arenaName)); // worldEditAPI.loadWorld() returns worldEdit world and not Bukkit world, so it needs to be adapted into a bukkit world.
+
+        double posX = areaSection.getDouble(".x");
+        double posY = areaSection.getDouble(".y");
+        double posZ = areaSection.getDouble(".z");
+
+        return new Location(world, posX, posY, posZ);
+
+    }
+
+    /*public Location getLocationFromConfig(String arenaName, String area, String position){
+
+        Arena arena = getArena(arenaName);
+        if(arena == null) return null;
+        World world = BukkitAdapter.adapt(worldEditAPI.loadWorld(arenaName)); // worldEditAPI.loadWorld() returns worldEdit world and not Bukkit world, so it needs to be adapted into a bukkit world.
+
+        String posX;
+        String posY;
+        String posZ;
+        // getConfigValue(arenaName, "lootchest-locations.pos1.x.")
+        // Retrieves coordinates from arena.yml based on what area is called and what position in that area is called.
+        if(position.equalsIgnoreCase("pos 1")){
+            posX = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos1.x.") : getConfigValue(arenaName, "lobby.pos1.x.");
+            posY = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos1.y.") : getConfigValue(arenaName, "lobby.pos1.y.");
+            posZ = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos1.z.") : getConfigValue(arenaName, "lobby.pos1.z.");
+        } else if(position.equalsIgnoreCase("pos 2")){
+            posX = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos2.x.") : getConfigValue(arenaName, "lobby.pos2.x.");
+            posY = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos2.y.") : getConfigValue(arenaName, "lobby.pos2.y.");
+            posZ = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos2.z.") : getConfigValue(arenaName, "lobby.pos2.z.");
+        } else {
+            posX = null;
+            posY = null;
+            posZ = null;
+        }
+
+        if(posX == null || posY == null || posZ == null) return null;
+
+        List<String> posXYZ_String = new ArrayList<>(Arrays.asList(posX, posY, posZ));
+
+        if(posXYZ_String.contains("none")){
+            return null;
+        }
+
+        List<Double> posXYZ = new ArrayList<>();
+
+        for(String pos : posXYZ_String){
+            posXYZ.add(Double.parseDouble(pos));
+        }
+
+        return new Location(world, posXYZ.get(0), posXYZ.get(1), posXYZ.get(2));
+    }*/
+    public int getLootChestsAmount(String arenaName){
+        String path = "arenas." + arenaName + ".lootchest-locations.";
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+        ConfigurationSection config = arenaConfig.getConfigurationSection(path);
+
+        if(config == null){
+            return 0;
+        }
+
+        Map<String, Object> objects = config.getValues(false);
+
+        String objectToString;
+        String pos = "pos";
+        int amount = 0;
+
+        for(Map.Entry<String, Object> entry : objects.entrySet()){
+            objectToString = entry.toString();
+            if(objectToString.contains(pos)){
+                amount++;
+            } else {
+                Bukkit.broadcastMessage("Error, couldn't find lootchest location");
+            }
+
+        }
+
+        return amount;
+
+    }
+
+    public void setLootChestLocation(String arenaName, int posIndex, Location location, Player player){
+
+
+        ConfigurationSection configurationSection = configManager.getArenaConfig();
+        String path = "arenas." + arenaName + ".lootchest-locations.";
+
+        configurationSection.set(path + "pos" + posIndex + ".x", location.getBlockX());
+        configurationSection.set(path + "pos" + posIndex + ".y", location.getBlockY());
+        configurationSection.set(path + "pos" + posIndex + ".z", location.getBlockZ());
+
+        tryLogging(configManager::saveArenaConfig, "Error, couldn't save the location of the lootchest.");
+    }
+
+    private Location getArenaLocationFromYml(String arenaName, String pos){
+        String path = "arenas." + arenaName + ".arena";
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+        if(arenaConfig.getConfigurationSection(path) == null) return null;
+
+        World world = BukkitAdapter.adapt(worldEditAPI.loadWorld(arenaName));
+        ConfigurationSection arenaLocationConfig = arenaConfig.getConfigurationSection(path);
+        if(arenaLocationConfig == null) return null;
+
+        ConfigurationSection positionConfig = arenaLocationConfig.getConfigurationSection(pos);
+        if(positionConfig == null) return null;
+
+        double posX = positionConfig.getDouble("x");
+        double posY = positionConfig.getDouble("y");;
+        double posZ = positionConfig.getDouble("z");;
+
+        return new Location(world, posX, posY, posZ);
+
+    }
+
+    public Location getArenaLocation(String arenaName, String pos){
+        if(arenaPos1 == null){
+            this.arenaPos1 = getArenaLocationFromYml(arenaName, pos);
+        }
+        if(arenaPos2 == null){
+            this.arenaPos2 = getArenaLocationFromYml(arenaName, pos);
+        }
+
+        return pos.equalsIgnoreCase("pos1") ? arenaPos1 : arenaPos2;
+    }
+
+    private Location getLobbyLocationFromYml(String arenaName, String pos){
+        String path = "arenas." + arenaName + ".lobby";
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+        if(arenaConfig.getConfigurationSection(path) == null) return null;
+
+        World world = BukkitAdapter.adapt(worldEditAPI.loadWorld(arenaName));
+        ConfigurationSection lobbyLocationConfig = arenaConfig.getConfigurationSection(path);
+        if(lobbyLocationConfig == null) return null;
+
+        ConfigurationSection positionConfig = lobbyLocationConfig.getConfigurationSection(pos);
+        if(positionConfig == null) return null;
+
+        double posX = positionConfig.getDouble("x");
+        double posY = positionConfig.getDouble("y");;
+        double posZ = positionConfig.getDouble("z");;
+
+        return new Location(world, posX, posY, posZ);
+
+    }
+
+    public Location getLobbyLocation(String arenaName, String pos){
+        if(lobbyPos1 == null){
+            this.lobbyPos1 = getLobbyLocationFromYml(arenaName, pos);
+        }
+        if(lobbyPos2 == null){
+            this.lobbyPos2 = getLobbyLocationFromYml(arenaName, pos);
+        }
+
+        return pos.equalsIgnoreCase("pos1") ? lobbyPos1 : lobbyPos2;
+    }
+
+    public List <Location> getLootChestLocations(String arenaName, Player player){
+
+        String path = "arenas." + arenaName + ".lootchest-locations";
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+
+        if(arenaConfig.getConfigurationSection(path) == null) return new ArrayList<>();
+
+        ConfigurationSection lootchestsConfig = arenaConfig.getConfigurationSection(path);
+
+        World world = BukkitAdapter.adapt(worldEditAPI.loadWorld(arenaName));
+
+        List<Location> lootchestLocations = new ArrayList<>();
+
+        double posX;
+        double posY;
+        double posZ;
+
+        if (lootchestsConfig == null){
+            player.sendMessage("Error, couldn't load: " + path);
+            return new ArrayList<>();
+        }
+        ConfigurationSection lootPosSection;
+        Location lootchestLocation;
+        Set<String> locations = lootchestsConfig.getKeys(false);
+        for(String location : locations){
+            if(location.startsWith("pos")){
+                lootPosSection = lootchestsConfig.getConfigurationSection(location);
+                posX = lootPosSection.getDouble("x");
+                //player.sendMessage("X coordinate: " + posX);
+                posY = lootPosSection.getDouble("y");
+                //player.sendMessage("Y coordinate: " + posY);
+                posZ = lootPosSection.getDouble("z");
+                //player.sendMessage("Z coordinate: " + posZ);
+
+                if(posX != 0.0 && posY != 0.0 && posZ != 0.0){
+                    lootchestLocation = new Location(world, posX, posY, posZ);
+                    lootchestLocations.add(lootchestLocation);
+
+                    //player.sendMessage("Lootchest location: " + lootchestLocation);
+                }
+            }
+
+        }
+        return lootchestLocations.isEmpty() ? new ArrayList<>() : lootchestLocations;
+
+    }
+
+    public List<Location> findLootChestLocations(Player player){
+        String path = "arenas.";
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
+        if(arenaConfig.getConfigurationSection(path) == null) return new ArrayList<>();
+        ConfigurationSection config = arenaConfig.getConfigurationSection(path);
+        if(config == null) return new ArrayList<>();
+
+        World world;
+        Set<String> arenas = config.getKeys(false);
+        Set<String> locations;
+        ConfigurationSection arenaSection;
+        String worldName;
+        ConfigurationSection lootChestLocationsSection;
+        ConfigurationSection positions;
+
+        double x;
+        double y;
+        double z;
+
+        Location lootChestLocation;
+        List<Location> lootChestLocations = new ArrayList<>();
+
+        for(String arena : arenas){
+            arenaSection = config.getConfigurationSection(arena);
+
+            if(arenaSection == null) return new ArrayList<>();
+            worldName = arenaSection.getString(".worldName");
+
+            if(worldName == null){
+                return new ArrayList<>();
+            }
+
+            world = Bukkit.getWorld(worldName);
+
+            lootChestLocationsSection = config.getConfigurationSection("." + arena + ".lootchest-locations");
+            if(lootChestLocationsSection == null){
+                continue;
+            }
+
+            locations = lootChestLocationsSection.getKeys(false);
+            for(String location : locations){
+                positions = lootChestLocationsSection.getConfigurationSection(location);
+
+                if(positions == null){
+                    continue;
+                }
+
+                x = positions.getDouble("x");
+                y = positions.getDouble("y");
+                z = positions.getDouble("z");
+
+                lootChestLocation = new Location(world, x, y, z);
+                lootChestLocations.add(lootChestLocation);
             }
         }
 
-        return blocks;
+        if(lootChestLocations.isEmpty()){
+            player.sendMessage("Couldn't find any chests");
+            return new ArrayList<>();
+        } else {
+            player.sendMessage("Found some chests");
+            return lootChestLocations;
+        }
     }
-*/
 
-    /*public void reloadArenaYml(String arenaName){
-        String blockPath = "arenas." + arenaName + ".blacklisted-blocks";
+    public void deleteLootChestlocation (String arenaName, Location lootChestLocation, Player player){
+        String path = "arenas." + arenaName + ".lootchest-locations";
+        FileConfiguration arenaConfig = configManager.getArenaConfig();
 
-        List<String> defaultBlacklistedBlocks = new ArrayList<>();
-        defaultBlacklistedBlocks.add("BEDROCK");
-        tryLogging(() ->{
+        if(arenaConfig.getConfigurationSection(path) == null) return;
 
-            ConfigurationSection configurationSection = configManager.getArenaConfig();
-            configurationSection.set(blockPath, defaultBlacklistedBlocks);
+        ConfigurationSection lootchestsConfig = arenaConfig.getConfigurationSection(path);
 
-            configManager.saveArenaConfig();
-        }, "An error occurred while reloading blacklisted blocks for: " + arenaName +  " in arena.yml");
+        if(lootchestsConfig == null){
+            player.sendMessage("Error, couldn't load section in Arena.yml");
+            return;
+        }
 
+        double x = lootChestLocation.getX();
+        double y = lootChestLocation.getY();
+        double z = lootChestLocation.getZ();
 
-    }*/
+        boolean foundAndDeleted = false;
+
+        ConfigurationSection lootPosSection;
+        Set<String> entries = lootchestsConfig.getKeys(false);
+        for(String entry : entries){
+            lootPosSection = lootchestsConfig.getConfigurationSection(entry);
+            if(lootPosSection == null){
+                player.sendMessage("Error, couldn't load: " + entry);
+                return;
+            }
+
+            if(lootPosSection.getDouble("x") == x && lootPosSection.getDouble("y") == y && lootPosSection.getDouble("z") == z){
+                lootchestsConfig.set(entry, null);
+                foundAndDeleted = true;
+                break;
+            }
+        }
+
+        if(foundAndDeleted){
+            player.sendMessage("Loot chest location removed successfully");
+            tryLogging(configManager::saveArenaConfig, "Error, couldn't update the Arena.yml file.");
+        } else {
+            player.sendMessage("No matching loot chest location found.");
+        }
+
+    }
 
     public void giveStartingItems(String arenaName){
 
@@ -1094,43 +1462,6 @@ public class ArenaManager {
             }
         }
     }
-    public String getArenaLoc1(String arenaName){
-        Arena thisArena = getArena(arenaName);
-
-        if(thisArena == null) return null;
-
-        if(thisArena.getArenaLoc1() != null){
-            return thisArena.getArenaLoc1().toString();
-        } else return null;
-
-    }
-    public String getArenaLoc2(String arenaName){
-        Arena thisArena = getArena(arenaName);
-
-        if(thisArena == null) return null;
-
-        if (thisArena.getArenaLoc2() != null) {
-            return thisArena.getArenaLoc2().toString();
-        } else return null;
-    }
-    public String getLobbyLoc1(String arenaName){
-        Arena thisArena = getArena(arenaName);
-
-        if(thisArena == null) return null;
-
-        if (thisArena.getLobbyLoc1() != null) {
-            return thisArena.getLobbyLoc1().toString();
-        } else return null;
-    }
-    public String getLobbyLoc2(String arenaName){
-        Arena thisArena = getArena(arenaName);
-
-        if(thisArena == null) return null;
-
-        if (thisArena.getLobbyLoc2() != null) {
-            return thisArena.getLobbyLoc2().toString();
-        } else return null;
-    }
     public Integer getPlayers(String arenaName){
         Arena currentArena = getArena(arenaName);
 
@@ -1140,6 +1471,8 @@ public class ArenaManager {
         Arena arena = getArena(arenaName);
         return arena.getGameState().toString();
     }
+
+    private final Map<UUID , Long> lastInteract = new HashMap<>();
 }
 
 // Additional methods and utilities as necessary

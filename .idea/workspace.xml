@@ -6,12 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="59663720-f0ed-437f-8eba-45ebb01e6bc8" name="Changes" comment="V0.0.1.2">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/API/WorldeditAPI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/API/WorldeditAPI.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/Arena/Arena.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/Arena/Arena.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/LavaEscapePlugin.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/LavaEscapePlugin.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/LavaCommandExecutor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/LavaCommandExecutor.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/events/GameEvents.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/events/GameEvents.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaMenu.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaMenu.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/GameManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/GameManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/MenuManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/MenuManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/MenuManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ItemManager.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,10 +39,11 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/src/main/java/org/example/Main.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="jar://$MAVEN_REPOSITORY$/org/spigotmc/spigot-api/1.20.1-R0.1-SNAPSHOT/spigot-api-1.20.1-R0.1-20230921.163938-66-sources.jar!/org/bukkit/Location.java" root0="SKIP_INSPECTION" />
+    <setting file="file://$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaManager.java" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="CurrentFile" />
+    <option name="selectedTabId" value="ProjectErrors" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
@@ -66,7 +69,7 @@
     &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
     &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
     &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;inlay.hints&quot;
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;
   }
 }</component>
   <component name="RecentsManager">
@@ -134,5 +137,9 @@
     <MESSAGE value="Start" />
     <MESSAGE value="V0.0.1.2" />
     <option name="LAST_COMMIT_MESSAGE" value="V0.0.1.2" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
   </component>
 </project>

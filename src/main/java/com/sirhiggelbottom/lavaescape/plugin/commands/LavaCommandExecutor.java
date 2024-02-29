@@ -3,10 +3,8 @@ package com.sirhiggelbottom.lavaescape.plugin.commands;
 import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
-import com.sirhiggelbottom.lavaescape.plugin.events.GameEvents;
 import com.sirhiggelbottom.lavaescape.plugin.managers.*;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -21,27 +19,26 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     private final LavaEscapePlugin plugin;
     private final ArenaManager arenaManager;
     private final ConfigManager configManager;
-    private final GameEvents gameEvents;
+    /*private final GameEvents gameEvents;*/
     private final WorldeditAPI worldeditAPI;
     private final GameManager gameManager;
-    private final MenuManager menuManager;
+    private final ItemManager itemManager;
     private final ArenaMenu arenaMenu;
 
 
-    public LavaCommandExecutor(LavaEscapePlugin plugin, GameEvents gameEvents, ConfigManager configManager, ArenaManager arenaManager, WorldeditAPI worldeditAPI, GameManager gameManager, MenuManager menuManager, ArenaMenu arenaMenu) {
+    public LavaCommandExecutor(LavaEscapePlugin plugin/*, GameEvents gameEvents*/, ConfigManager configManager, ArenaManager arenaManager, WorldeditAPI worldeditAPI, GameManager gameManager, ItemManager itemManager, ArenaMenu arenaMenu) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.configManager = configManager;
-        this.gameEvents = gameEvents;
+        /*this.gameEvents = gameEvents;*/
         this.worldeditAPI = worldeditAPI;
         this.gameManager = gameManager;
-        this.menuManager = menuManager;
+        this.itemManager = itemManager;
         this.arenaMenu = arenaMenu;
     }
 
@@ -50,6 +47,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 0) {
             return false;
         }
+
 /* Command hierarchy:
             arg[0]   arg[1]   arg[2]        arg[3]        arg[4]
    /Lava -> arena -> arenaName -> start
@@ -124,7 +122,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                             case "setgraceperiod":
                                 return handleSetGracePeriod(sender, args);
 
-                            case "set-area":
+                            /*case "set-area":
                                 switch (args[4].toLowerCase()){
                                     case "arena":
                                     case "lobby":
@@ -132,7 +130,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
 
                                     default:
                                         break;
-                                }
+                                }*/
                         }
                         break;
                 }
@@ -162,7 +160,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     /*private boolean handleTestPageCommand(CommandSender sender) {
-        menuManager.createNewArena(sender);
+        itemManager.createNewArena(sender);
         return true;
     }*/
 
@@ -319,7 +317,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleDeleteCommand(CommandSender sender, String[] args) {
-        List<String> arenaNames = arenaManager.getArenaS();
+        List<String> arenaNames = arenaManager.getArenas();
 
         if (args.length < 2) {
             sender.sendMessage("Usage: /lava delete <name>");
@@ -343,12 +341,12 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleListCommand(CommandSender sender) {
-        List<String> arenaNames = arenaManager.getArenaS();
+        List<String> arenaNames = arenaManager.getArenas();
         if(arenaNames == null){
         sender.sendMessage("There are no arenas");
         return true;
         }
-        sender.sendMessage(arenaManager.getArenaS().toString());
+        sender.sendMessage(arenaManager.getArenas().toString());
 
         return true;
     }
@@ -395,7 +393,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     }
 
     // Implementation for /Lava <name> arena and /Lava <name> lobby
-    private boolean handleAreaCommand(CommandSender sender, String[] args) {
+    /*private boolean handleAreaCommand(CommandSender sender, String[] args) {
         Player player = (Player) sender;
 
         if (!(sender instanceof Player)) {
@@ -431,7 +429,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        /*switch (args[4].toLowerCase()) {
+        *//*switch (args[4].toLowerCase()) {
             case "arena":
                 arena.setArenaLocations(pos1 , pos2);
                 arenaManager.saveTheArena(arena);
@@ -450,11 +448,11 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             default:
                 player.sendMessage("Invalid area type. Use 'arena' or 'lobby'.");
                 return false;
-        }*/
+        }*//*
 
 
         return false;
-    }
+    }*/
 
     // Implementation for /Lava <name> minplayers <int> and /Lava <name> maxplayers <int>
     private boolean handlePlayerLimitsCommand(CommandSender sender, String[] args) {
@@ -657,7 +655,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                 case "list":
                 case "join":
                 case "leave":
-                    return arenaManager.getArenaS();
+                    return arenaManager.getArenas();
                 default:
                     break;
             }
@@ -715,7 +713,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
                     case "join":
                     case "leave":
                     case "delete":
-                        return arenaManager.getArenaS();
+                        return arenaManager.getArenas();
 
                     default:
                         break;
@@ -726,7 +724,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             case 3:
 //                sender.sendMessage("Admin list debug message: argLength case 3 started");
 
-                boolean matchFound = arenaManager.getArenaS().stream().anyMatch(item -> item.equalsIgnoreCase(args[1]));
+                boolean matchFound = arenaManager.getArenas().stream().anyMatch(item -> item.equalsIgnoreCase(args[1]));
 
                 if (matchFound) {
                         commands.add("start");

@@ -14,44 +14,48 @@ import java.util.*;
 
 public class ArenaMenu {
     private final LavaEscapePlugin plugin;
-    private final MenuManager menuManager;
+    private final ItemManager itemManager;
     private final ArenaManager arenaManager;
     private List<String> arenas;
     private List<List<String>> arenasDistributed;
     private Map<UUID, Arena> currentArenaView;
     private Map<UUID, ArenaSubPage> currentSubpageView;
+    private Map<UUID, String> currentListPage;
     private List<String> arenaAnvilSubPage;
     private final Map<ArenaSubPage, Inventory> subPages;
     private final Arena arena;
     public Map<UUID, String> deleteItemMap;
     public Map<UUID, String> deleteBlockMap;
+    public boolean autoClosed;
 
 
 
-    public ArenaMenu(LavaEscapePlugin plugin, ArenaManager arenaManager, MenuManager menuManager, Arena arena) {
+    public ArenaMenu(LavaEscapePlugin plugin, ArenaManager arenaManager, ItemManager itemManager, Arena arena) {
         this.plugin = plugin;
-        this.menuManager = menuManager;
+        this.itemManager = itemManager;
         this.arena = arena;
         this.arenas = new ArrayList<>();
         this.arenaManager = arenaManager;
         this.subPages =  new HashMap<>();
         this.currentArenaView = new HashMap<>();
         this.currentSubpageView = new HashMap<>();
+        this.currentListPage = new HashMap<>();
         this.arenasDistributed = new ArrayList<>();
         arenaAnvilSubPage = new ArrayList<>(Arrays.asList("CREATE_A_NEW_ARENA" , "MIN_Y", "MAX_Y",
                 "MIN_PLAYERS", "MAX_PLAYERS", "RISE_TIME", "GRACE_TIME", "STARTER_ITEMS_ADD", "BLACKLISTED_BLOCKS_ADD"));
         deleteItemMap = new HashMap<>();
         deleteBlockMap = new HashMap<>();
+        autoClosed = false;
         distributeArenas();
         initializeArenaPages();
     }
 
     private void reloadArenaList(){
-        arenas =  arenaManager.getArenaS();
+        arenas =  arenaManager.getArenas();
     }
 
     public enum ArenaSubPage{
-        CONFIG, SET_ARENA, SET_LOBBY, MIN_Y, MAX_Y, MIN_PLAYERS, MAX_PLAYERS, RISE_TIME, GRACE_TIME, STARTER_ITEMS, STARTER_ITEMS_ADD, BLACKLISTED_BLOCKS, BLACKLISTED_BLOCKS_ADD, DELETE_ARENA,
+        CONFIG, SET_ARENA, SET_LOBBY, MIN_Y, MAX_Y, MIN_PLAYERS, MAX_PLAYERS, RISE_TIME, GRACE_TIME, STARTER_ITEMS, STARTER_ITEMS_ADD, LOOT_ITEMS, LOOT_ITEMS_ADD, BLACKLISTED_BLOCKS, BLACKLISTED_BLOCKS_ADD, DELETE_ARENA,
         ARENA
     }
 
@@ -90,10 +94,11 @@ public class ArenaMenu {
         ArenaSubPage subPage = getSubPage(player);
 
         return switch (subPage) {
-            case SET_ARENA, SET_LOBBY, MIN_Y, MAX_Y, MIN_PLAYERS, MAX_PLAYERS, RISE_TIME, GRACE_TIME, STARTER_ITEMS, BLACKLISTED_BLOCKS, DELETE_ARENA ->
+            case SET_ARENA, SET_LOBBY, MIN_Y, MAX_Y, MIN_PLAYERS, MAX_PLAYERS, RISE_TIME, GRACE_TIME, STARTER_ITEMS, LOOT_ITEMS, BLACKLISTED_BLOCKS, DELETE_ARENA ->
                 ArenaSubPage.CONFIG;
             case STARTER_ITEMS_ADD -> ArenaSubPage.STARTER_ITEMS;
             case BLACKLISTED_BLOCKS_ADD -> ArenaSubPage.BLACKLISTED_BLOCKS;
+            case LOOT_ITEMS_ADD -> ArenaSubPage.LOOT_ITEMS;
             default -> null;
         };
     }
@@ -122,7 +127,7 @@ public class ArenaMenu {
     }
 
     public Inventory getPreviousMainMenu (Player player){
-        if(!arenaContains(player)){
+        if(!arenaContains(player) && !currentListContains(player)){
             return null;
         }
 
@@ -130,7 +135,16 @@ public class ArenaMenu {
     }
 
     public void backToMainMenu(Player player, Inventory inventory){
-        currentArenaView.remove(player.getUniqueId());
+        if(currentListContains(player)){
+            currentListPage.remove(player.getUniqueId());
+        } else if(arenaContains(player)){
+            currentArenaView.remove(player.getUniqueId());
+        }
+
+        if(subpagesContains(player)){
+            currentSubpageView.remove(player.getUniqueId());
+        }
+
         player.openInventory(inventory);
     }
 
@@ -149,37 +163,39 @@ public class ArenaMenu {
     }
 
     public Inventory mainMenu (Player player){
-        int pageSize = 27;
         List<Integer> usedSlots;
         boolean isAdmin = player.hasPermission("lavaescape.admin");
+        int pageSize = isAdmin? 36 : 27;
 
         Inventory inv = Bukkit.createInventory(null, pageSize, ChatColor.DARK_RED.toString() + ChatColor.BOLD + "LAVA Escape: Main menu");
 
         if(isAdmin){
-            usedSlots = new ArrayList<>(Arrays.asList(10, 12, 14, 16));
+            usedSlots = new ArrayList<>(Arrays.asList(10, 12, 14, 16, 22));
 
-            inv.setItem(usedSlots.get(1), menuManager.getSwitchPvPModeItem());
+            inv.setItem(usedSlots.get(1), itemManager.getSwitchPvPModeItem());
 
-            inv.setItem(usedSlots.get(2), menuManager.getCreateArenaItem());
+            inv.setItem(usedSlots.get(2), itemManager.getCreateArenaItem());
 
-            inv.setItem(usedSlots.get(3), menuManager.getExitItem());
+            inv.setItem(usedSlots.get(3), itemManager.getExitItem());
+
+            //inv.setItem(usedSlots.get(4), itemManager.getLootchestItem());
         } else {
             usedSlots = new ArrayList<>(Arrays.asList(11, 15));
-            inv.setItem(usedSlots.get(1), menuManager.getExitItem());
+            inv.setItem(usedSlots.get(1), itemManager.getExitItem());
         }
 
-        inv.setItem(usedSlots.get(0), menuManager.getArenasItem());
+        inv.setItem(usedSlots.get(0), itemManager.getArenasItem());
 
         for(int i = 0; i < pageSize; i++){
             if(!usedSlots.contains(i)){
-                inv.setItem(i, menuManager.getBorderItem());
+                inv.setItem(i, itemManager.getBorderItem());
             }
         }
 
         return inv;
     }
 
-    private Inventory createArenaPage(String arenaName){
+    private Inventory createArenaPage(String arenaName, Player player){
         int arenaPageSize = 27;
         int backSlot = 0;
         int joinSlot = 10;
@@ -188,21 +204,26 @@ public class ArenaMenu {
         int restartSlot = 15;
         int resetArenaSlot = 16;
         int exitSlot = 18;
+        boolean isAdmin = player.hasPermission("lavaescape.admin");
         Inventory inv = Bukkit.createInventory(null, arenaPageSize, arenaName);
 
         List<Integer> nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, joinSlot, configSlot, startSlot, restartSlot, resetArenaSlot, exitSlot));
 
-        inv.setItem(joinSlot, menuManager.getJoinItem());
-        inv.setItem(configSlot, menuManager.getConfigItem());
-        inv.setItem(startSlot, menuManager.getStartItem(arenaName));
-        inv.setItem(restartSlot, menuManager.getRestartItem(arenaName));
-        inv.setItem(resetArenaSlot, menuManager.getResetArenaItem());
-        inv.setItem(backSlot, menuManager.getGoBackItem());
-        inv.setItem(exitSlot, menuManager.getExitItem());
+        inv.setItem(joinSlot, itemManager.getJoinItem());
+
+        if(isAdmin){
+            inv.setItem(configSlot, itemManager.getConfigItem());
+            inv.setItem(startSlot, itemManager.getStartItem(arenaName));
+            inv.setItem(restartSlot, itemManager.getRestartItem(arenaName));
+            inv.setItem(resetArenaSlot, itemManager.getResetArenaItem());
+        }
+
+        inv.setItem(backSlot, itemManager.getGoBackItem());
+        inv.setItem(exitSlot, itemManager.getExitItem());
 
         for (int i = 0; i < arenaPageSize; i++){
             if(!nonBoarderItems.contains(i)) {
-                inv.setItem(i, menuManager.getBorderItem());
+                inv.setItem(i, itemManager.getBorderItem());
             }
         }
         return inv;
@@ -310,36 +331,46 @@ public class ArenaMenu {
                 int minPlayersSlot = 33;
                 int maxPlayersSlot = 34;
                 int starterItemsSlot = 39;
+                int lootchestsSlot = 40;
                 int blacklistedBlocksSlot = 41;
                 int exitSlot = 45;
 
-                int resetArenaSlot = 32;
+
+
                 result = Bukkit.createInventory(null, arenaPageSize, arenaName + " Config");
 
                 nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, setArenaSlot, setLobbySlot, generateSpawnsSlot, minYSlot, maxYSlot, normalSlot, compSlot,
-                        riseTimeSlot, graceTimeSlot, deleteArenaSlot, minPlayersSlot, maxPlayersSlot, starterItemsSlot, blacklistedBlocksSlot, exitSlot));
+                        riseTimeSlot, graceTimeSlot, deleteArenaSlot, minPlayersSlot, maxPlayersSlot, starterItemsSlot, lootchestsSlot, blacklistedBlocksSlot, exitSlot));
 
-                result.setItem(backSlot, menuManager.getGoBackItem());
-                result.setItem(setArenaSlot, menuManager.getSetArenaItem(arenaName));
-                result.setItem(setLobbySlot, menuManager.getSetLobbyItem(arenaName));
-                result.setItem(minPlayersSlot, menuManager.getMinPlayersItem(arenaName));
-                result.setItem(maxPlayersSlot, menuManager.getMaxPlayersItem(arenaName));
-                result.setItem(minYSlot, menuManager.getMinYLevelItem(arenaName));
-                result.setItem(maxYSlot, menuManager.getMaxYLevelItem(arenaName));
-                result.setItem(generateSpawnsSlot, menuManager.getGenerateSpawnsItem(arenaName));
-                result.setItem(riseTimeSlot, menuManager.getRiseTimeItem(arenaName));
-                result.setItem(graceTimeSlot, menuManager.getGraceTimeItem(arenaName));
-                result.setItem(normalSlot, menuManager.getNormalModeItem(arenaName));
-                result.setItem(compSlot, menuManager.getCompModeItem(arenaName));
-                /*result.setItem(resetArenaSlot, menuManager.getResetArenaItem());*/
-                result.setItem(deleteArenaSlot, menuManager.getDeleteArenaItem());
-                result.setItem(starterItemsSlot, menuManager.getStarterItemsItem());
-                result.setItem(blacklistedBlocksSlot, menuManager.getBlacklistedBlocksItem());
-                result.setItem(exitSlot, menuManager.getExitItem());
+                if(!arenaManager.getConfigValue(arenaName, "arena.pos1.x.").isEmpty() &&
+                        !arenaManager.getConfigValue(arenaName, "arena.pos1.y.").isEmpty() &&
+                        !arenaManager.getConfigValue(arenaName, "arena.pos1.z.").isEmpty()){
+                    int updateSlot = 22;
+                    nonBoarderItems.add(updateSlot);
+                    result.setItem(updateSlot, itemManager.getUpdateArenaItem());
+                }
+
+                result.setItem(backSlot, itemManager.getGoBackItem());
+                result.setItem(setArenaSlot, itemManager.getSetArenaItem(arenaName));
+                result.setItem(setLobbySlot, itemManager.getSetLobbyItem(arenaName));
+                result.setItem(minPlayersSlot, itemManager.getMinPlayersItem(arenaName));
+                result.setItem(maxPlayersSlot, itemManager.getMaxPlayersItem(arenaName));
+                result.setItem(minYSlot, itemManager.getMinYLevelItem(arenaName));
+                result.setItem(maxYSlot, itemManager.getMaxYLevelItem(arenaName));
+                result.setItem(generateSpawnsSlot, itemManager.getGenerateSpawnsItem(arenaName));
+                result.setItem(riseTimeSlot, itemManager.getRiseTimeItem(arenaName));
+                result.setItem(graceTimeSlot, itemManager.getGraceTimeItem(arenaName));
+                result.setItem(normalSlot, itemManager.getNormalModeItem(arenaName));
+                result.setItem(compSlot, itemManager.getCompModeItem(arenaName));
+                result.setItem(deleteArenaSlot, itemManager.getDeleteArenaItem());
+                result.setItem(starterItemsSlot, itemManager.getStarterItemsItem());
+                result.setItem(lootchestsSlot, itemManager.getLootchestConfigItem());
+                result.setItem(blacklistedBlocksSlot, itemManager.getBlacklistedBlocksItem());
+                result.setItem(exitSlot, itemManager.getExitItem());
 
                 for(int i = 0; i < arenaPageSize; i++){
                     if(!nonBoarderItems.contains(i)){
-                        result.setItem(i, menuManager.getBorderItem());
+                        result.setItem(i, itemManager.getBorderItem());
                     }
                 }
                 return result;
@@ -351,17 +382,17 @@ public class ArenaMenu {
 
                 result = Bukkit.createInventory(null, arenaPageSize, "Confirm arena location for: " + arenaName);
 
-                result.setItem(backSlot, menuManager.getGoBackItem());
+                result.setItem(backSlot, itemManager.getGoBackItem());
                 if(player != null){
-                    result.setItem(infoSlot, menuManager.getInfoItem(player,"Arena", arenaName));
-                } else result.setItem(infoSlot, menuManager.getInfoItem(null,"Arena", arenaName));
-                result.setItem(confirmSlot, menuManager.getConfirmItem("Arena"));
-                result.setItem(cancelSlot, menuManager.getCancelItem("Arena"));
-                result.setItem(tryAgainSlot, menuManager.getTryAgainItem("Arena"));
+                    result.setItem(infoSlot, itemManager.getInfoItem(player,"Arena", arenaName));
+                } else result.setItem(infoSlot, itemManager.getInfoItem(null,"Arena", arenaName));
+                result.setItem(confirmSlot, itemManager.getConfirmItem("Arena"));
+                result.setItem(cancelSlot, itemManager.getCancelItem("Arena"));
+                result.setItem(tryAgainSlot, itemManager.getTryAgainItem("Arena"));
 
                 for(int i = 0; i < arenaPageSize; i++){
                     if(!nonBoarderItems.contains(i)){
-                        result.setItem(i, menuManager.getBorderItem());
+                        result.setItem(i, itemManager.getBorderItem());
                     }
                 }
                 return result;
@@ -373,17 +404,17 @@ public class ArenaMenu {
 
                 result = Bukkit.createInventory(null, arenaPageSize, "Confirm lobby location for: " + arenaName);
 
-                result.setItem(backSlot, menuManager.getGoBackItem());
+                result.setItem(backSlot, itemManager.getGoBackItem());
                 if(player != null){
-                    result.setItem(infoSlot, menuManager.getInfoItem(player,"Lobby", arenaName));
-                } else result.setItem(infoSlot, menuManager.getInfoItem(null,"Lobby", arenaName));
-                result.setItem(confirmSlot, menuManager.getConfirmItem("Lobby"));
-                result.setItem(cancelSlot, menuManager.getCancelItem("Lobby"));
-                result.setItem(tryAgainSlot, menuManager.getTryAgainItem("Lobby"));
+                    result.setItem(infoSlot, itemManager.getInfoItem(player,"Lobby", arenaName));
+                } else result.setItem(infoSlot, itemManager.getInfoItem(null,"Lobby", arenaName));
+                result.setItem(confirmSlot, itemManager.getConfirmItem("Lobby"));
+                result.setItem(cancelSlot, itemManager.getCancelItem("Lobby"));
+                result.setItem(tryAgainSlot, itemManager.getTryAgainItem("Lobby"));
 
                 for(int i = 0; i < arenaPageSize; i++){
                     if(!nonBoarderItems.contains(i)){
-                        result.setItem(i, menuManager.getBorderItem());
+                        result.setItem(i, itemManager.getBorderItem());
                     }
                 }
 
@@ -405,7 +436,7 @@ public class ArenaMenu {
 
                 result = Bukkit.createInventory(null, arenaPageSize, "Starter items");
 
-                result.setItem(backSlot, menuManager.getGoBackItem());
+                result.setItem(backSlot, itemManager.getGoBackItem());
 
                 for(int slot : itemSlots){
                     if(itemIterator.hasNext() && !usedItemSlots.contains(slot)){
@@ -417,15 +448,59 @@ public class ArenaMenu {
                     }
                 }
 
-                result.setItem(addSlot, menuManager.getNew("Item"));
+                result.setItem(addSlot, itemManager.getNew("Item"));
 
                 for(int i = 0; i < arenaPageSize; i++){
                     if(!nonBoarderItems.contains(i)){
-                        result.setItem(i, menuManager.getBorderItem());
+                        result.setItem(i, itemManager.getBorderItem());
                     }
                 }
 
                 return result;
+
+            case LOOT_ITEMS:
+                arenaPageSize = 45;
+                int lootAddSlot = 39;
+                int getLootChestSlot = 41;
+                List<Integer> lootItemsSlots = new ArrayList<>(Arrays.asList(10, 11, 12, 13, 14, 15, 16,
+                        19, 20, 21, 22, 23, 24 , 25, 28, 29, 30, 31, 32, 33, 34));
+                List<Integer> usedLootItemSlots = new ArrayList<>();
+                // ToDo Get items from arena.yml file, also create option to add and remove items from said .yml file.
+                List<ItemStack> lootItems = new ArrayList<>(arenaManager.getLootItems(arenaName));
+                // Placeholder list.
+                /*List<ItemStack> lootItems = new ArrayList<>(Arrays.asList(new ItemStack(Material.DIAMOND_HELMET), new ItemStack(Material.GOLDEN_SWORD),
+                        new ItemStack(Material.SHIELD), new ItemStack(Material.GOLDEN_APPLE)));*/
+                nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, lootAddSlot, getLootChestSlot));
+                nonBoarderItems.addAll(lootItemsSlots);
+
+                result = Bukkit.createInventory(null, arenaPageSize, "Loot items");
+                result.setItem(backSlot, itemManager.getGoBackItem());
+
+                /*if(lootItems != null){
+
+                }*/
+
+                Iterator<ItemStack> lootItemIterator = lootItems.iterator();
+
+                for(int slot : lootItemsSlots){
+                    if(lootItemIterator.hasNext() && !usedLootItemSlots.contains(slot)){
+                        ItemStack lootItem = lootItemIterator.next();
+                        result.setItem(slot, lootItem);
+                        usedLootItemSlots.add(slot);
+                    }
+                }
+
+                result.setItem(lootAddSlot, itemManager.getNew("LootItem"));
+                result.setItem(getLootChestSlot, itemManager.getLootchestItem());
+
+                for(int i = 0; i < arenaPageSize; i++){
+                    if(!nonBoarderItems.contains(i)){
+                        result.setItem(i, itemManager.getBorderItem());
+                    }
+                }
+
+                return result;
+
 
             case BLACKLISTED_BLOCKS:
                 arenaPageSize = 45;
@@ -440,7 +515,7 @@ public class ArenaMenu {
 
                 result = Bukkit.createInventory(null, arenaPageSize, "Blacklisted blocks");
 
-                result.setItem(backSlot, menuManager.getGoBackItem());
+                result.setItem(backSlot, itemManager.getGoBackItem());
 
                 if(blacklistedBlocks != null){
                     Iterator<ItemStack> blockIterator = blacklistedBlocks.iterator();
@@ -456,11 +531,11 @@ public class ArenaMenu {
                     }
                 }
 
-                result.setItem(addSlot, menuManager.getNew("Block"));
+                result.setItem(addSlot, itemManager.getNew("Block"));
 
                 for(int i = 0; i < arenaPageSize; i++){
                     if(!nonBoarderItems.contains(i)){
-                        result.setItem(i, menuManager.getBorderItem());
+                        result.setItem(i, itemManager.getBorderItem());
                     }
                 }
 
@@ -476,12 +551,12 @@ public class ArenaMenu {
 
                 result = Bukkit.createInventory(null, arenaPageSize, "WARNING! You are about to delete this arena, are you sure?");
 
-                result.setItem(yesSlot, menuManager.getYesItem(arenaName));
-                result.setItem(noSlot, menuManager.getNoItem());
+                result.setItem(yesSlot, itemManager.getYesItem(arenaName));
+                result.setItem(noSlot, itemManager.getNoItem());
 
                 for(int i = 0; i < arenaPageSize; i++){
                     if(!nonBoarderItems.contains(i)){
-                        result.setItem(i, menuManager.getBorderItem());
+                        result.setItem(i, itemManager.getBorderItem());
                     }
                 }
                 return result;
@@ -492,11 +567,27 @@ public class ArenaMenu {
     }
 
     public void goBack(Player player){
-        if (subpagesContains(player)) {
-            changeSubPage(player, getPreviousSubPage(player));
-        } else if (arenaContains(player)) {
+        if(!currentListContains(player)){
+            if(arenaContains(player)){
+                if(subpagesContains(player)){
+                    if(currentSubpageView.get(player.getUniqueId()).equals(ArenaSubPage.CONFIG)){
+                        // Player is in the config subPage and is sent back to the Arena page
+                        closeSubPage(player);
+                        openArenaPage(player,currentArenaView.get(player.getUniqueId()));
+                    } else {
+                        // Player is not in the config page, but is in one of the other subPages and is sent back to the config subPage
+                        changeSubPage(player, getPreviousSubPage(player));
+                    }
+                } else {
+                    // Player is in an Arena page and is sent back to the Arena list page
+                    createArenaPages(player, 1);
+                }
+            }
+        } else {
+            // Player is in Arena list page and is sent back to the main menu
             backToMainMenu(player, getPreviousMainMenu(player));
         }
+
     }
 
     public String parseDeleteItem(String item){
@@ -515,12 +606,15 @@ public class ArenaMenu {
         if (arenaContains(player)) { // if player is in arenaPages, player is removed.
             closeArenaPage(player, getPreviousArenaPage(player));
         }
+
+        if(currentListContains(player)){
+            closeListPage(player);
+        }
         player.closeInventory();
     }
 
     public void openArenaPage(Player player, Arena arena){
-
-        player.openInventory(createArenaPage(arena.getName()));
+        player.openInventory(createArenaPage(arena.getName(), player));
 
         currentArenaView.put(player.getUniqueId(), arena);
     }
@@ -569,6 +663,10 @@ public class ArenaMenu {
         currentSubpageView.remove(player.getUniqueId(), currentSubpageView.get(player.getUniqueId()));
     }
 
+    public void closeListPage(Player player){
+        currentListPage.remove(player.getUniqueId());
+    }
+
     public void createArenaPages(Player player, int pageNumber){
 
         int arenaPageSize = 45;
@@ -584,35 +682,38 @@ public class ArenaMenu {
 
         Inventory inv = Bukkit.createInventory(null, arenaPageSize, "Arena list");
 
-        inv.setItem(backSlot, menuManager.getGoBackItem());
+        inv.setItem(backSlot, itemManager.getGoBackItem());
 
         if (pageNumber > 1){
-            inv.setItem(previousSlot, menuManager.getPreviousPageItem());
+            inv.setItem(previousSlot, itemManager.getPreviousPageItem());
             usedSlots.add(previousSlot);
         }
 
-        inv.setItem(exitSlot, menuManager.getExitItem());
+        inv.setItem(exitSlot, itemManager.getExitItem());
 
         if(getArenasForPage(pageNumber).size() > maxAmountOfArenasPerPage){
-            inv.setItem(nextSlot, menuManager.getNextPageItem());
+            inv.setItem(nextSlot, itemManager.getNextPageItem());
             usedSlots.add(nextSlot);
         }
 
         int i = 0;
 
         for(String arena : getArenasForPage(pageNumber - 1)){
-            inv.setItem(arenaSlots.get(i), menuManager.getArenaItem(arena));
+            inv.setItem(arenaSlots.get(i), itemManager.getArenaItem(arena));
             usedSlots.add(arenaSlots.get(i));
             i++;
         }
 
         for (int j = 0; j < arenaPageSize; j++){
             if(!usedSlots.contains(j)){
-                inv.setItem(j, menuManager.getBorderItem());
+                inv.setItem(j, itemManager.getBorderItem());
             }
         }
-
+        currentListPage.put(player.getUniqueId(), "Arena List");
         player.openInventory(inv);
+    }
+    public boolean currentListContains(Player player){
+        return currentListPage.containsKey(player.getUniqueId());
     }
 
     public void deleteStartingItem(Player player, String itemName){
@@ -652,7 +753,51 @@ public class ArenaMenu {
 
         for(int i = 0; i < pageSize; i++){
             if(i != yesSlot && i != noSlot && i != infoSlot){
-                inv.setItem(i, menuManager.getBorderItem());
+                inv.setItem(i, itemManager.getBorderItem());
+            }
+        }
+
+        player.openInventory(inv);
+    }
+
+    public void deleteLootItem(Player player, String itemName){
+        int pageSize = 27;
+        int yesSlot = 10;
+        int infoSlot = 13;
+        int noSlot = 16;
+
+        ItemStack yesItem = new ItemStack(Material.TNT);
+        ItemMeta yesMeta = yesItem.getItemMeta();
+        ItemStack noItem = new ItemStack(Material.CHEST);
+        ItemMeta noMeta = noItem.getItemMeta();
+        if(yesMeta == null || noMeta == null) return;
+
+        yesMeta.setDisplayName(ChatColor.RED + "Delete loot item");
+        yesMeta.setLore(List.of(ChatColor.GRAY + "Removes item from the loot items list"));
+
+        yesItem.setItemMeta(yesMeta);
+
+        noMeta.setDisplayName(ChatColor.GREEN + "Don't delete loot item");
+        noMeta.setLore(List.of(ChatColor.GRAY + "Goes back to the loot items list."));
+
+        noItem.setItemMeta(noMeta);
+
+        Inventory inv = Bukkit.createInventory(null, pageSize, "Delete loot item?");
+
+        ItemStack infoItem = new ItemStack(Material.getMaterial(itemName));
+        if(Material.getMaterial(itemName) == null){
+            player.sendMessage("Couldn't find the item");
+        }
+
+        inv.setItem(infoSlot, infoItem);
+        deleteItemMap.put(player.getUniqueId(), infoItem.toString());
+
+        inv.setItem(yesSlot, yesItem);
+        inv.setItem(noSlot, noItem);
+
+        for(int i = 0; i < pageSize; i++){
+            if(i != yesSlot && i != noSlot && i != infoSlot){
+                inv.setItem(i, itemManager.getBorderItem());
             }
         }
 
@@ -696,7 +841,7 @@ public class ArenaMenu {
 
         for(int i = 0; i < pageSize; i++){
             if(i != yesSlot && i != noSlot && i != infoSlot){
-                inv.setItem(i, menuManager.getBorderItem());
+                inv.setItem(i, itemManager.getBorderItem());
             }
         }
         player.openInventory(inv);

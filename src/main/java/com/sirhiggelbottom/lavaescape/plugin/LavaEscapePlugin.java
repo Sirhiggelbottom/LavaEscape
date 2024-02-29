@@ -16,7 +16,7 @@ public class LavaEscapePlugin extends JavaPlugin {
     private WorldeditAPI worldeditAPI;
     private Arena arena;
     private GameManager gameManager;
-    private MenuManager menuManager;
+    private ItemManager itemManager;
     private ArenaMenu arenaMenu;
     private boolean shouldContinueFilling = false;
 
@@ -34,16 +34,16 @@ public class LavaEscapePlugin extends JavaPlugin {
 
         gameManager = new GameManager(arenaManager,configManager,worldeditAPI,this);
 
-        menuManager = new MenuManager(this , arenaManager);
+        itemManager = new ItemManager(this , arenaManager);
 
-        arenaMenu = new ArenaMenu(this, arenaManager, menuManager, arena);
+        arenaMenu = new ArenaMenu(this, arenaManager, itemManager, arena);
 
-        gameEvents = new GameEvents(this, arena, arenaManager, gameManager, menuManager, arenaMenu, worldeditAPI, configManager);
+        gameEvents = new GameEvents(this, arenaManager, gameManager, itemManager, arenaMenu, worldeditAPI, configManager);
 
         this.getServer().getPluginManager().registerEvents(gameEvents, this);
 
         // Initialize command executor and bind commands
-        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, gameEvents, configManager, arenaManager, worldeditAPI, gameManager, menuManager, arenaMenu);
+        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, /*gameEvents,*/ configManager, arenaManager, worldeditAPI, gameManager, itemManager, arenaMenu);
 
         getCommand("lava").setExecutor(commandExecutor);
 
