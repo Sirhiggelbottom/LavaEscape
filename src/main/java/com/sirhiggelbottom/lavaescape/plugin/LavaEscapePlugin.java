@@ -20,8 +20,6 @@ public class LavaEscapePlugin extends JavaPlugin {
     private ArenaMenu arenaMenu;
     private boolean shouldContinueFilling = false;
 
-    //@Todo Create a method that takes the arenaName from the subpages and converts it to the correct format and name.
-
     @Override
     public void onEnable() {
         // Initialize ConfigManager
@@ -42,15 +40,8 @@ public class LavaEscapePlugin extends JavaPlugin {
 
         this.getServer().getPluginManager().registerEvents(gameEvents, this);
 
-        // Initialize command executor and bind commands
-        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(this, /*gameEvents,*/ configManager, arenaManager, worldeditAPI, gameManager, itemManager, arenaMenu);
+        getCommand("lavaEscape").setExecutor(new LavaCommandExecutor(arenaMenu));
 
-        getCommand("lava").setExecutor(commandExecutor);
-
-        // Implementing Tab Completer for the commands
-        getCommand("lava").setTabCompleter(commandExecutor);
-
-        // Any additional setup such as event listeners
     }
 
     @Override

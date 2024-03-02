@@ -2,6 +2,7 @@ package com.sirhiggelbottom.lavaescape.plugin.managers;
 
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
+import com.sirhiggelbottom.lavaescape.plugin.LootItem;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -170,7 +171,7 @@ public class ArenaMenu {
         Inventory inv = Bukkit.createInventory(null, pageSize, ChatColor.DARK_RED.toString() + ChatColor.BOLD + "LAVA Escape: Main menu");
 
         if(isAdmin){
-            usedSlots = new ArrayList<>(Arrays.asList(10, 12, 14, 16, 22));
+            usedSlots = new ArrayList<>(Arrays.asList(10, 12, 14, 16));
 
             inv.setItem(usedSlots.get(1), itemManager.getSwitchPvPModeItem());
 
@@ -178,7 +179,7 @@ public class ArenaMenu {
 
             inv.setItem(usedSlots.get(3), itemManager.getExitItem());
 
-            //inv.setItem(usedSlots.get(4), itemManager.getLootchestItem());
+
         } else {
             usedSlots = new ArrayList<>(Arrays.asList(11, 15));
             inv.setItem(usedSlots.get(1), itemManager.getExitItem());
@@ -271,37 +272,6 @@ public class ArenaMenu {
         }
     }
 
-
-    /* List of pages and their contents:
-    *   CONFIG:
-    *       Contains all the other pages except the arena page itself.
-    *   SET_ARENA:
-    *       Gives the player a wand, and when the player has selected 2 positions a page pops up and asks the player if they are happy with their choice.
-    *   SET_LOBBY:
-    *       Same as SET_ARENA.
-    *   MIN_Y:
-    *       Is an anvil page that the player inputs the lowest Y-level for the spawnpoint creator to search for spawnpoints.
-    *   MAX_Y:
-    *       The same as MIN_Y but for the highest Y-level.
-    *   MIN_PLAYERS:
-    *       Anvil page where the player can input the minimum amount of players required for a game to start in normal / server mode.
-    *   MAX_PLAYERS:
-    *       Same as MIN_PLAYERS.
-    *   RISE_TIME:
-    *       Anvil page where the player can input the time in between each time the lava rises.
-    *   GRACE_TIME:
-    *       Anvil page where the player can input the time from when the game starts until the lava starts to rise.
-    *   STARTER_ITEMS:
-    *       Displays the current starter items, if any. It also has an add button
-    *   STARTER_ITEMS_ADD:
-    *       Anvil page where the player can add starter items.
-    *   BLACKLISTED_BLOCKS:
-    *       Displays the current blacklisted blocks, if any. It also has an add button.
-    *   DELETE_ARENA:
-    *       Has a yes and a no button, the name of the page is: Are you sure you want to delete <areanName>?
-    *   NONE:
-    *       For normal players it displays a join, back and exit button. For admins it displays the config button as well.
-    * */
     private Inventory createSubPage(Player player, ArenaSubPage subPage, String arenaName) {
 
         int arenaPageSize;
@@ -465,8 +435,7 @@ public class ArenaMenu {
                 List<Integer> lootItemsSlots = new ArrayList<>(Arrays.asList(10, 11, 12, 13, 14, 15, 16,
                         19, 20, 21, 22, 23, 24 , 25, 28, 29, 30, 31, 32, 33, 34));
                 List<Integer> usedLootItemSlots = new ArrayList<>();
-                // ToDo Get items from arena.yml file, also create option to add and remove items from said .yml file.
-                List<ItemStack> lootItems = new ArrayList<>(arenaManager.getLootItems(arenaName));
+                List<LootItem> lootItems = new ArrayList<>(arenaManager.getLootItems(arenaName));
                 // Placeholder list.
                 /*List<ItemStack> lootItems = new ArrayList<>(Arrays.asList(new ItemStack(Material.DIAMOND_HELMET), new ItemStack(Material.GOLDEN_SWORD),
                         new ItemStack(Material.SHIELD), new ItemStack(Material.GOLDEN_APPLE)));*/
@@ -480,7 +449,19 @@ public class ArenaMenu {
 
                 }*/
 
-                Iterator<ItemStack> lootItemIterator = lootItems.iterator();
+
+                List<ItemStack> lootItemStacks = new ArrayList<>();
+                ItemStack item;
+                ItemMeta itemMeta;
+                for(LootItem lootItem : lootItems){
+                    item = lootItem.getItemStack();
+                    itemMeta = item.getItemMeta();
+                    itemMeta.setLore(List.of(ChatColor.GRAY + "Rarity: " + lootItem.getRarity()));
+                    item.setItemMeta(itemMeta);
+                    lootItemStacks.add(lootItem.getItemStack());
+                }
+
+                Iterator<ItemStack> lootItemIterator = lootItemStacks.iterator();
 
                 for(int slot : lootItemsSlots){
                     if(lootItemIterator.hasNext() && !usedLootItemSlots.contains(slot)){
@@ -734,7 +715,7 @@ public class ArenaMenu {
         yesItem.setItemMeta(yesMeta);
 
         noMeta.setDisplayName(ChatColor.GREEN + "Don't delete item");
-        noMeta.setLore(List.of(ChatColor.GRAY + "Goes back to the starter items list."));
+        noMeta.setLore(List.of(ChatColor.GRAY + "Goes back to the config page."));
 
         noItem.setItemMeta(noMeta);
 
@@ -778,7 +759,7 @@ public class ArenaMenu {
         yesItem.setItemMeta(yesMeta);
 
         noMeta.setDisplayName(ChatColor.GREEN + "Don't delete loot item");
-        noMeta.setLore(List.of(ChatColor.GRAY + "Goes back to the loot items list."));
+        noMeta.setLore(List.of(ChatColor.GRAY + "Goes back to config page."));
 
         noItem.setItemMeta(noMeta);
 
@@ -822,7 +803,7 @@ public class ArenaMenu {
         yesItem.setItemMeta(yesMeta);
 
         noMeta.setDisplayName(ChatColor.GREEN + "Don't delete block");
-        noMeta.setLore(List.of(ChatColor.GRAY + "Goes back to the blacklisted blocks list."));
+        noMeta.setLore(List.of(ChatColor.GRAY + "Goes back to the config page."));
 
         noItem.setItemMeta(noMeta);
 

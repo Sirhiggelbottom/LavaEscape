@@ -77,8 +77,6 @@ public class ItemManager {
 
                     String input = stateSnapshot.getText();
 
-                    stateSnapshot.getPlayer().sendMessage(input);
-
                     if(!input.isBlank() && !input.equalsIgnoreCase("nameless") && !input.equalsIgnoreCase("error, try again")){
 
                         closeAnvilGuiPage(stateSnapshot.getPlayer());
@@ -91,7 +89,7 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
+                .itemLeft(getWriteableItem(null))
                 .title("Name your arena.")
                 .plugin(plugin)
                 .open(openAnvilGuiPage(player));
@@ -121,7 +119,8 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
+                .itemLeft(getWriteableItem(null))
+                .text("Height")
                 .title("Set min Y-level.")
                 .plugin(plugin)
                 .open(openAnvilGuiPage(player));
@@ -151,7 +150,8 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
+                .itemLeft(getWriteableItem(null))
+                .text("Height")
                 .title("Set max Y-level.")
                 .plugin(plugin)
                 .open(openAnvilGuiPage(player));
@@ -165,7 +165,6 @@ public class ItemManager {
                         return Collections.emptyList();
                     }
 
-                    stateSnapshot.getPlayer().sendMessage(stateSnapshot.getText());
                     UUID playerId = stateSnapshot.getPlayer().getUniqueId();
 
                     String input = stateSnapshot.getText();
@@ -181,7 +180,8 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
+                .itemLeft(getWriteableItem(null))
+                .text("Amount")
                 .title("Set minimum amount of players.")
                 .plugin(plugin)
                 .open(openAnvilGuiPage(player));
@@ -195,7 +195,6 @@ public class ItemManager {
                         return Collections.emptyList();
                     }
 
-                    stateSnapshot.getPlayer().sendMessage(stateSnapshot.getText());
                     UUID playerId = stateSnapshot.getPlayer().getUniqueId();
 
                     String input = stateSnapshot.getText();
@@ -211,7 +210,8 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
+                .itemLeft(getWriteableItem(null))
+                .text("Amount")
                 .title("Set maximum amount of players.")
                 .plugin(plugin)
                 .open(openAnvilGuiPage(player));
@@ -225,7 +225,6 @@ public class ItemManager {
                         return Collections.emptyList();
                     }
 
-                    stateSnapshot.getPlayer().sendMessage(stateSnapshot.getText());
                     UUID playerId = stateSnapshot.getPlayer().getUniqueId();
 
                     String input = stateSnapshot.getText();
@@ -241,7 +240,8 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
+                .itemLeft(getWriteableItem(null))
+                .text("Time seconds")
                 .title("Set rise time.")
                 .plugin(plugin)
                 .open(openAnvilGuiPage(player));
@@ -255,7 +255,6 @@ public class ItemManager {
                         return Collections.emptyList();
                     }
 
-                    stateSnapshot.getPlayer().sendMessage(stateSnapshot.getText());
                     UUID playerId = stateSnapshot.getPlayer().getUniqueId();
 
                     String input = stateSnapshot.getText();
@@ -271,7 +270,8 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
+                .itemLeft(getWriteableItem(null))
+                .text("Time seconds")
                 .title("Set grace time.")
                 .plugin(plugin)
                 .open(openAnvilGuiPage(player));
@@ -285,7 +285,6 @@ public class ItemManager {
                         return Collections.emptyList();
                     }
 
-                    stateSnapshot.getPlayer().sendMessage(stateSnapshot.getText());
                     UUID playerId = stateSnapshot.getPlayer().getUniqueId();
 
                     String input = stateSnapshot.getText();
@@ -301,7 +300,7 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
+                .itemLeft(getWriteableItem(null))
                 .text("Item, amount")
                 .title("Add starter item.")
                 .plugin(plugin)
@@ -316,7 +315,6 @@ public class ItemManager {
                         return Collections.emptyList();
                     }
 
-                    stateSnapshot.getPlayer().sendMessage(stateSnapshot.getText());
                     UUID playerId = stateSnapshot.getPlayer().getUniqueId();
 
                     String input = stateSnapshot.getText();
@@ -332,8 +330,8 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
-                .text("Item, amount")
+                .itemLeft(getWriteableItem("rarity"))
+                .text("Item, amount, rarity")
                 .title("Add loot item.")
                 .plugin(plugin)
                 .open(openAnvilGuiPage(player));
@@ -347,12 +345,11 @@ public class ItemManager {
                         return Collections.emptyList();
                     }
 
-                    stateSnapshot.getPlayer().sendMessage(stateSnapshot.getText());
                     UUID playerId = stateSnapshot.getPlayer().getUniqueId();
 
                     String input = stateSnapshot.getText();
 
-                    if(!input.isBlank() && correctBlockMaterialName(input)){
+                    if(!input.isBlank() && correctBlockMaterialName(input) && correctRarity(input)){
 
                         closeAnvilGuiPage(stateSnapshot.getPlayer());
                         writtenBlacklistetBlocksValue.put(playerId, input);
@@ -363,7 +360,8 @@ public class ItemManager {
                     }
                 })
                 .interactableSlots()
-                .itemLeft(getWriteableItem())
+                .itemLeft(getWriteableItem(null))
+                .text("Block")
                 .title("Add blacklisted block.")
                 .plugin(plugin)
                 .open(openAnvilGuiPage(player));
@@ -382,8 +380,31 @@ public class ItemManager {
         if(material == null) return false;
 
         String amount = parts[1].trim().replace(" ", "");
-        Bukkit.broadcastMessage("Amount is: " + amount);
-        return !amount.isEmpty();
+        if(amount.isEmpty()){
+            return false;
+        }
+
+        try{
+            Integer.parseInt(amount);
+            return true;
+        } catch (NumberFormatException e){
+            return false;
+        }
+
+    }
+
+    private boolean correctRarity(String input){
+        String[] parts = input.split(",");
+        String rarity = parts[2].trim().replace(" ", "");
+
+        if(rarity.isEmpty()) return false;
+
+        try {
+            Float.parseFloat(rarity);
+            return true;
+        } catch (NumberFormatException e){
+            return false;
+        }
     }
 
     private boolean correctBlockMaterialName(String input){
@@ -418,6 +439,16 @@ public class ItemManager {
         String cleanUpValue = parts[1].trim().replace(" ", "");
 
         return Integer.parseInt(cleanUpValue);
+    }
+
+    public float parseItemRarityFloat(String rawInput){
+        String[] parts = rawInput.split(",");
+        if(parts.length == 0){
+            return -1;
+        }
+        String cleanUpValue = parts[2].trim().replace(" ", "");
+
+        return Float.parseFloat(cleanUpValue);
     }
 
     public String parseBlacklistedBlock(String input){
@@ -611,12 +642,16 @@ public class ItemManager {
         return create;
     }
 
-    public ItemStack getWriteableItem(){
+    public ItemStack getWriteableItem(String explanation){
         ItemStack writeableItem = new ItemStack(Material.PAPER);
         ItemMeta meta = writeableItem.getItemMeta();
         if(meta == null) return null;
-        meta.setDisplayName("Nameless");
-        meta.setLore(List.of(ChatColor.GRAY + "Nameless"));
+        meta.setDisplayName("Confirm");
+        if(explanation != null){
+            meta.setLore(Arrays.asList(ChatColor.GRAY + "Tip:", ChatColor.GRAY + "Higher rarity lowers the chance of that item appearing in the loot chest."));
+        } else {
+            meta.setLore(List.of(ChatColor.GRAY + "Nameless"));
+        }
         writeableItem.setItemMeta(meta);
         return writeableItem;
     }
@@ -859,28 +894,28 @@ public class ItemManager {
     }
 
     public ItemStack getMinYLevelItem(String arenaName){
-        ItemStack minYLevelItem = new ItemStack(Material.WILD_ARMOR_TRIM_SMITHING_TEMPLATE);
+        ItemStack minYLevelItem = new ItemStack(Material.BEDROCK);
         ItemMeta meta = minYLevelItem.getItemMeta();
         if(meta == null) return null;
 
         String loreInfo = arenaManager.getConfigValue(arenaName, "Y-levels.Ymin");
 
         meta.setDisplayName(ChatColor.RED + "Set min Y-level");
-        meta.setLore(List.of(ChatColor.GRAY + "Lets player enter lowest Y-level for spawns. \nCurrent value: " + loreInfo));
+        meta.setLore(Arrays.asList(ChatColor.GRAY + "Lets player enter lowest Y-level for spawns.", ChatColor.GRAY + "Current value: " + loreInfo));
         minYLevelItem.setItemMeta(meta);
 
         return minYLevelItem;
     }
 
     public ItemStack getMaxYLevelItem(String arenaName){
-        ItemStack maxYLevelItem = new ItemStack(Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE);
+        ItemStack maxYLevelItem = new ItemStack(Material.LIGHTNING_ROD);
         ItemMeta meta = maxYLevelItem.getItemMeta();
         if(meta == null) return null;
 
         String loreInfo = arenaManager.getConfigValue(arenaName, "Y-levels.Ymax");
 
         meta.setDisplayName(ChatColor.RED + "Set max Y-level");
-        meta.setLore(List.of(ChatColor.GRAY + "Lets player enter highest Y-level for spawns. \nCurrent value: " +loreInfo));
+        meta.setLore(Arrays.asList(ChatColor.GRAY + "Lets player enter highest Y-level for spawns.", ChatColor.GRAY + "Current value: " +loreInfo));
         maxYLevelItem.setItemMeta(meta);
 
         return maxYLevelItem;

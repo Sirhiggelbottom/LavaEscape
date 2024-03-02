@@ -3,6 +3,7 @@ package com.sirhiggelbottom.lavaescape.plugin.managers;
 import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
+import com.sirhiggelbottom.lavaescape.plugin.LootItem;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.extent.clipboard.Clipboard;
 import com.sk89q.worldedit.math.BlockVector3;
@@ -33,14 +34,14 @@ public class ArenaManager {
     private HashMap<UUID, List<ItemStack>> playerItems;
     private HashMap<UUID, Integer> playerExp;
     public Map<String, List<ItemStack>> startingItemsMap;
-    public Map<String, List<ItemStack>> lootItemsMap;
+    public Map<String, List<LootItem>> lootItemsMap;
     public Map<String, List<ItemStack>> blacklistedBlocksMap;
     public Map<UUID, String> writtenArenaLocation1;
     public Map<UUID, String> writtenArenaLocation2;
     public Map<UUID, String> writtenLobbyLocation1;
     public Map<UUID, String> writtenLobbyLocation2;
     public Map<Arena, List<Location>> lootChestLocations;
-    public Map<UUID, List<Location>> openLootchests;
+    public Map<UUID, Set<Location>> openLootchests;
     private Location arenaPos1;
     private Location arenaPos2;
     private Location lobbyPos1;
@@ -154,7 +155,8 @@ public class ArenaManager {
             configurationSection.set(itemPath + ".STONE_PICKAXE" , 1);
             configurationSection.set(itemPath + ".BAKED_POTATO" , 5);
             // Set default loot items.
-            configurationSection.set(lootPath + ".GOLDEN_APPLE", 1);
+            configurationSection.set(lootPath + ".GOLDEN_APPLE" + ".amount", 1);
+            configurationSection.set(lootPath + ".GOLDEN_APPLE" + ".rarity", 40.0);
             // Set default blacklisted block.
             configurationSection.set(blockPath, defaultBlacklistedBlocks);
 
@@ -321,48 +323,52 @@ public class ArenaManager {
 
         }, "An error occurred while removing starter item from arena.yml");
     }
-    public void setLootItem (String arenaName, String item, int amount, Player player){
+    public void setLootItem (String arenaName, String item, int amount, float rarity, Player player){
         String basePath = "arenas." + arenaName;
         String lootItemPath = basePath + ".loot-items.";
 
         tryLogging(() -> {
             ConfigurationSection configurationSection = configManager.getArenaConfig();
 
-            configurationSection.set(lootItemPath + item, amount);
+            configurationSection.set(lootItemPath + item + ".amount", amount);
+            configurationSection.set(lootItemPath + item + ".rarity", rarity);
             configManager.saveArenaConfig();
 
             updateInMemoryLootItemList(arenaName);
 
-            player.sendMessage("Added: " + amount + " " + item + " to loot items.");
+            player.sendMessage("Added: " + amount + " " + item + " with an rarity of: " + rarity + " to loot items.");
         }, "An error occurred while adding loot item to arena.yml");
     }
     private void updateInMemoryLootItemList(String arenaName){
-        List<ItemStack> updatedItems = getLootingItems(arenaName);
+        List<LootItem> updatedItems = getLootingItems(arenaName);
         setLootItems(arenaName, updatedItems);
     }
-    private void setLootItems(String arenaName, List<ItemStack> items){
+    private void setLootItems(String arenaName, List<LootItem> items){
         this.lootItemsMap.put(arenaName, items);
     }
-    public List<ItemStack> getLootItems(String arenaName){
+    public List<LootItem> getLootItems(String arenaName){
         if(this.lootItemsMap.get(arenaName) == null){
             return getLootingItems(arenaName);
         } else return this.lootItemsMap.get(arenaName);
     }
-    public List<ItemStack> getLootingItems(String arenaName){
+
+    public List<LootItem> getLootingItems(String arenaName){
         FileConfiguration arenaConfig = configManager.getArenaConfig();
         String basePath = "arenas." + arenaName + ".loot-items";
         ConfigurationSection config = arenaConfig.getConfigurationSection(basePath);
-        List<ItemStack> items = new ArrayList<>();
+        List<LootItem> items = new ArrayList<>();
         if(config != null){
 
             Map<String, Object> objects = config.getValues(false);
 
             for(Map.Entry<String, Object> entry : objects.entrySet()){
-                if(entry.getValue() instanceof Integer){
+                if(entry.getValue() instanceof ConfigurationSection itemSection){
                     Material material = Material.getMaterial(entry.getKey());
                     if(material != null){
-                        ItemStack item = new ItemStack(material, (Integer) entry.getValue());
-                        items.add(item);
+                        int amount = itemSection.getInt("amount");
+                        float rarity = (float) itemSection.getDouble("rarity");
+                        LootItem lootItem = new LootItem(new ItemStack(material, amount), rarity);
+                        items.add(lootItem);
                     }
                 }
             }
@@ -400,8 +406,10 @@ public class ArenaManager {
         }, "An error occurred while removing loot item from arena.yml");
     }
     public void spawnLootItems(Inventory inv, String arenaName){
+
+        List<LootItem> lootItems = getLootItems(arenaName);
         // Checks if the list of loot items is empty
-        if(getLootItems(arenaName).isEmpty()){
+        if(lootItems.isEmpty()){
             Bukkit.broadcastMessage("Error, there is no loot!");
             Bukkit.broadcastMessage("Tell the admin to check the arena config!");
             return;
@@ -409,14 +417,31 @@ public class ArenaManager {
 
         // Since Worldedit can save the contents of chest, this method clears the inventory to avoid problems.
         inv.clear();
-
         // Shuffles the loot item lists, and chooses a random amount of items from that list to add to the loot chest.
         Collections.shuffle(getLootItems(arenaName));
-        int itemsInChest = 1 + random.nextInt(getLootItems(arenaName).size());
+        List<ItemStack> loot = new ArrayList<>();
+        //int itemsInChest = 1 + random.nextInt(getLootItems(arenaName).size());
 
-        for(int i = 0; i < itemsInChest; i++){
-            inv.addItem(getLootItems(arenaName).get(i).clone());
+        for(LootItem lootItem : lootItems){
+            float spawnProbability = 1.0f / lootItem.getRarity();
+            if(Math.random() <= spawnProbability){
+                loot.add(lootItem.getItemStack());
+            }
         }
+
+        if(loot.isEmpty()){
+            Bukkit.broadcastMessage("The loot chest was empty, trying again");
+            spawnLootItems(inv, arenaName);
+        } else {
+            for(ItemStack item : loot){
+                HashMap<Integer, ItemStack> unfittedItems = inv.addItem(item);
+
+                if(!unfittedItems.isEmpty()){
+                    Bukkit.broadcastMessage("Couldn't fit all the items, amount of items left: " + unfittedItems.size());
+                }
+            }
+        }
+
     }
     private String parseDeleteItem(String item){
         String[] rawString = item.split("\\{");
@@ -636,6 +661,7 @@ public class ArenaManager {
         Arena arena = arenaNames.get(arenaName);
         if (arena != null) {
             arena.removePlayer(player);
+            openLootchests.remove(player.getUniqueId());
             isGameOver(arenaName);
         }
     }
@@ -643,6 +669,7 @@ public class ArenaManager {
         Arena arena = arenaNames.get(arenaName);
         if (arena != null) {
             arena.removePlayer(player);
+            openLootchests.remove(player.getUniqueId());
         }
     }
     public void isGameOver(String arenaName){
@@ -1152,47 +1179,6 @@ public class ArenaManager {
 
     }
 
-    /*public Location getLocationFromConfig(String arenaName, String area, String position){
-
-        Arena arena = getArena(arenaName);
-        if(arena == null) return null;
-        World world = BukkitAdapter.adapt(worldEditAPI.loadWorld(arenaName)); // worldEditAPI.loadWorld() returns worldEdit world and not Bukkit world, so it needs to be adapted into a bukkit world.
-
-        String posX;
-        String posY;
-        String posZ;
-        // getConfigValue(arenaName, "lootchest-locations.pos1.x.")
-        // Retrieves coordinates from arena.yml based on what area is called and what position in that area is called.
-        if(position.equalsIgnoreCase("pos 1")){
-            posX = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos1.x.") : getConfigValue(arenaName, "lobby.pos1.x.");
-            posY = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos1.y.") : getConfigValue(arenaName, "lobby.pos1.y.");
-            posZ = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos1.z.") : getConfigValue(arenaName, "lobby.pos1.z.");
-        } else if(position.equalsIgnoreCase("pos 2")){
-            posX = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos2.x.") : getConfigValue(arenaName, "lobby.pos2.x.");
-            posY = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos2.y.") : getConfigValue(arenaName, "lobby.pos2.y.");
-            posZ = area.equalsIgnoreCase("arena")? getConfigValue(arenaName, "arena.pos2.z.") : getConfigValue(arenaName, "lobby.pos2.z.");
-        } else {
-            posX = null;
-            posY = null;
-            posZ = null;
-        }
-
-        if(posX == null || posY == null || posZ == null) return null;
-
-        List<String> posXYZ_String = new ArrayList<>(Arrays.asList(posX, posY, posZ));
-
-        if(posXYZ_String.contains("none")){
-            return null;
-        }
-
-        List<Double> posXYZ = new ArrayList<>();
-
-        for(String pos : posXYZ_String){
-            posXYZ.add(Double.parseDouble(pos));
-        }
-
-        return new Location(world, posXYZ.get(0), posXYZ.get(1), posXYZ.get(2));
-    }*/
     public int getLootChestsAmount(String arenaName){
         String path = "arenas." + arenaName + ".lootchest-locations.";
         FileConfiguration arenaConfig = configManager.getArenaConfig();

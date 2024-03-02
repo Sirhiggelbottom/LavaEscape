@@ -10,7 +10,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -41,7 +40,6 @@ public class GameEvents implements Listener {
     private final ArenaMenu arenaMenu;
     private final WorldeditAPI worldeditAPI;
     private final ConfigManager configManager;
-
     private boolean globalPvPmode;
 
     public GameEvents(LavaEscapePlugin plugin, ArenaManager arenaManager, GameManager gameManager, ItemManager itemManager, ArenaMenu arenaMenu, WorldeditAPI worldeditAPI, ConfigManager configManager) {
@@ -58,6 +56,12 @@ public class GameEvents implements Listener {
         this.globalPvPmode = arenaManager.getPvpMode();
 
     }
+
+    private Map<UUID, Boolean> lootchestCheck = new HashMap<>();
+    private Map<UUID, Boolean> confirmArenaPosCheck = new HashMap<>();
+    private Map<UUID, Boolean> confirmLobbyPosCheck = new HashMap<>();
+    private Map<UUID, Boolean> generateSpawnCheck = new HashMap<>();
+    private Map<UUID, Boolean> blockBreakCheck = new HashMap<>();
 
     /*
      waitingForInput
@@ -121,10 +125,10 @@ public class GameEvents implements Listener {
 
                     if (action == Action.LEFT_CLICK_BLOCK) {
                         lobbySelections[0] = event.getClickedBlock().getLocation();
-                        event.getPlayer().sendMessage("First position set");
+                        event.getPlayer().sendMessage("First position set at: " + lobbySelections[0].getX() + ", " + lobbySelections[0].getY() + ", " + lobbySelections[0].getZ());
                     } else {
                         lobbySelections[1] = event.getClickedBlock().getLocation();
-                        event.getPlayer().sendMessage("Second position set");
+                        event.getPlayer().sendMessage("Second position set at: " + lobbySelections[1].getX() + ", " + lobbySelections[1].getY() + ", " + lobbySelections[1].getZ());
                     }
 
                     // Cancel the event to prevent double firing
@@ -133,8 +137,6 @@ public class GameEvents implements Listener {
 
             }
 
-            List<String> message = new ArrayList<>();
-
             if(itemName.equals("ArenaWand") && getFirstArenaPosition(playerId) != null && getSecondArenaPosition(playerId) != null){
                 player.sendMessage("Arena pos set!");
                 arenaManager.writtenArenaLocation1.put(playerId, getFirstArenaPosition(playerId).toString());
@@ -142,9 +144,6 @@ public class GameEvents implements Listener {
                 player.openInventory(itemManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player), "arena"));
             } else if (itemName.equals("LobbyWand") && getFirstLobbyPosition(playerId) != null && getSecondLobbyPosition(playerId) != null) {
                 player.sendMessage("Lobby pos set!");
-                message.add("First pos: " + getFirstLobbyPosition(playerId).toString());
-                message.add("Second pos: " + getSecondLobbyPosition(playerId).toString());
-                player.sendMessage(message.toString());
                 arenaManager.writtenLobbyLocation1.put(playerId, getFirstLobbyPosition(playerId).toString());
                 arenaManager.writtenLobbyLocation2.put(playerId, getSecondLobbyPosition(playerId).toString());
                 player.openInventory(itemManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player), "lobby"));
@@ -189,33 +188,6 @@ public class GameEvents implements Listener {
         }
 
     }
-
-    /*@EventHandler
-    public void checkForPosSelection(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        UUID playerId = player.getUniqueId();
-        ItemStack item = player.getItemInHand();
-
-        ItemMeta meta = item.getItemMeta();
-
-
-        if (meta == null) return;
-
-        // Cooldown logic to stop spam messages
-        long lastInteractTime = lastInteract.getOrDefault(player.getUniqueId(), 0L);
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastInteractTime < 500) {
-            return;
-        }
-        lastInteract.put(player.getUniqueId(), currentTime);
-
-        if(getFirstArenaPosition(playerId) != null && getSecondArenaPosition(playerId) != null){
-            itemManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player), "arena");
-        } else if (getFirstLobbyPosition(playerId) != null && getSecondLobbyPosition(playerId) != null) {
-            itemManager.conformationInv(player, null, arenaMenu.getArenaNamePage(player),"lobby");
-        }
-    }*/
-
 
     private final Map<UUID , Long> lastInteract = new HashMap<>();
 
@@ -308,52 +280,57 @@ public class GameEvents implements Listener {
 
     @EventHandler
     public void onInventoryOpen(InventoryOpenEvent event){
-        if(event.getPlayer() instanceof Player player){
 
-            if(arenaManager.findPlayerArena(player) == null){
-                return;
-            }
+        if(!(event.getPlayer() instanceof Player player)) return;
 
-            if(ChatColor.stripColor(event.getView().getTitle()).equalsIgnoreCase("loot chest")){ // This might have to be changed into Get loot chest, since that's what it's called in itemManger. The displayname is changed in the onBlockPlace event.
-                // Cooldown logic to stop spam messages
-                long lastInteractTime = lastInteract.getOrDefault(player.getUniqueId(), 0L);
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastInteractTime > 500) {
-                    lastInteract.put(player.getUniqueId(), currentTime);
+        if(!event.getInventory().getType().equals(InventoryType.CHEST)) return;
 
-                    Arena playerArena = arenaManager.findPlayerArena(player);
-                    String arenaName = playerArena.getName();
-                    if(event.getInventory().getType().equals(InventoryType.CHEST)){
-                        Location lootChestLocation = event.getInventory().getLocation();
-                        List<Location> lootChestLocations = arenaManager.getLootChestLocations(arenaName, player);
+        if(arenaManager.findPlayerArena(player) == null) return;
 
-                        if(!lootChestLocations.isEmpty() && lootChestLocations.contains(lootChestLocation)){
+        if(!ChatColor.stripColor(event.getView().getTitle()).equalsIgnoreCase("loot chest")) return;
 
-                            if(arenaManager.openLootchests.containsKey(player.getUniqueId())){
+        Arena playerArena = arenaManager.findPlayerArena(player);
+        String arenaName = playerArena.getName();
 
-                                for(Map.Entry<UUID, List<Location>> entry : arenaManager.openLootchests.entrySet()){
-                                    List<Location> openedLootChests = entry.getValue();
+        Location lootChestLocation = event.getInventory().getLocation();
+        List<Location> lootChestLocations = arenaManager.getLootChestLocations(arenaName, player);
 
-                                    if(!openedLootChests.contains(lootChestLocation)){
-                                        arenaManager.spawnLootItems(event.getInventory(), arenaName);
-                                        arenaManager.openLootchests.get(player.getUniqueId()).add(lootChestLocation);
+        if(lootChestLocations.isEmpty()) return;
 
-                                    } else {
-                                        player.sendMessage("You have already opened this loot chest!");
-                                    }
-                                }
-                            } else {
-                                arenaManager.spawnLootItems(event.getInventory(), arenaName);
-                                List<Location> newOpenedLootChestList = new ArrayList<>();
-                                newOpenedLootChestList.add(lootChestLocation);
-                                arenaManager.openLootchests.put(player.getUniqueId(), newOpenedLootChestList);
+        if(!lootChestLocations.contains(lootChestLocation)) return;
 
-                            }
-                        }
-                    }
-                }
-            }
+        Set<Location> openedChests = arenaManager.openLootchests.get(player.getUniqueId());
+
+        // Spam filter
+        if(lootchestCheck.containsKey(player.getUniqueId()) && lootchestCheck.get(player.getUniqueId())){
+            lootchestCheck.remove(player.getUniqueId());
+            return;
         }
+
+        if(openedChests == null || openedChests.isEmpty()){
+            Set<Location> newOpenedLootChestList = new HashSet<>();
+            arenaManager.spawnLootItems(event.getInventory(), arenaName);
+            newOpenedLootChestList.add(lootChestLocation);
+            arenaManager.openLootchests.put(player.getUniqueId(), newOpenedLootChestList);
+            lootchestCheck.put(player.getUniqueId(), true);
+            return;
+        }
+
+        // Spam filter
+        if(lootchestCheck.containsKey(player.getUniqueId()) && lootchestCheck.get(player.getUniqueId())){
+            lootchestCheck.remove(player.getUniqueId());
+            return;
+        }
+
+        if(openedChests.contains(lootChestLocation)){
+            player.sendMessage("You have already opened this loot chest!");
+            lootchestCheck.put(player.getUniqueId(), true);
+        } else {
+            arenaManager.spawnLootItems(event.getInventory(), arenaName);
+            arenaManager.openLootchests.get(player.getUniqueId()).add(lootChestLocation);
+            lootchestCheck.put(player.getUniqueId(), true);
+        }
+
     }
 
     @EventHandler
@@ -381,29 +358,44 @@ public class GameEvents implements Listener {
         Arena playerArena;
         String arenaName;
 
+        if(blockBreakCheck.containsKey(player.getUniqueId()) && blockBreakCheck.get(player.getUniqueId())){
+            blockBreakCheck.remove(player.getUniqueId());
+            return;
+        }
+
         Location blockLocation = block.getLocation();
-        List<Location> lootChestLocations;
+        List<Location> lootChestLocations = arenaManager.findLootChestLocations(player);
+
 
 
         if(isAdmin){
             if(material.equals(Material.CHEST)){
-                lootChestLocations = arenaManager.findLootChestLocations(player);
                 if(lootChestLocations.contains(blockLocation) && arenaManager.findPlayerArena(player) == null){
                     event.setCancelled(true);
                     player.sendMessage("Error, you need to be in LootChest placement mode in order to remove loot chests.");
+                    blockBreakCheck.put(player.getUniqueId(), true);
                 } else if(lootChestLocations.contains(blockLocation) && arenaManager.findPlayerArena(player) != null){
                     playerArena = arenaManager.findPlayerArena(player);
                     arenaName = playerArena.getName();
 
                     if(arenaManager.getGameStage(arenaName).equals("STANDBY")){
                         arenaManager.deleteLootChestlocation(arenaName, blockLocation, player);
+                        blockBreakCheck.put(player.getUniqueId(), true);
                     } else{
                         event.setCancelled(true);
+                        blockBreakCheck.put(player.getUniqueId(), true);
                     }
                 }
             }
 
+            blockBreakCheck.put(player.getUniqueId(), true);
+
         } else {
+
+            if(blockBreakCheck.containsKey(player.getUniqueId()) && blockBreakCheck.get(player.getUniqueId())){
+                blockBreakCheck.remove(player.getUniqueId());
+                return;
+            }
 
             if(arenaManager.findPlayerArena(player) == null){
                 event.setCancelled(true);
@@ -411,10 +403,10 @@ public class GameEvents implements Listener {
             }
 
             playerArena = arenaManager.findPlayerArena(player);
-            lootChestLocations = arenaManager.findLootChestLocations(player);
             if(lootChestLocations.contains(blockLocation)){
                 event.setCancelled(true);
                 player.sendMessage("You're not allowed to break Loot chests!");
+                blockBreakCheck.put(player.getUniqueId(), true);
                 return;
             }
 
@@ -425,50 +417,32 @@ public class GameEvents implements Listener {
                         if(blacklistedBlock.getType() == material){
                             event.setCancelled(true);
                             player.sendMessage("This is a blacklisted block!");
+                            blockBreakCheck.put(player.getUniqueId(), true);
                             break;
                         }
                     }
                     break;
                 case WAITING, STARTING, STANDBY:
                     event.setCancelled(true);
+                    blockBreakCheck.put(player.getUniqueId(), true);
                     player.sendMessage("The game hasn't started yet!");
             }
+
+            blockBreakCheck.put(player.getUniqueId(), true);
 
         }
 
-        /*playerArena = arenaManager.findPlayerArena(player);
-
-        if(playerArena == null){
-            player.sendMessage("Couldn't find the arena");
-            event.setCancelled(true);
-        } else {
-
-            if(block.hasMetadata("Lootchest")){
-                event.setCancelled(true);
-                player.sendMessage("You can't break loot chests!");
-            }
-            List<ItemStack> getBlacklistedBlocks = arenaManager.getBlacklistedBlocks(playerArena.getName());
-            switch (playerArena.getGameState()){
-                case LAVA, DEATHMATCH, GRACE:
-                    for(ItemStack blacklistedBlock : getBlacklistedBlocks){
-                        if(blacklistedBlock.getType() == material){
-                            event.setCancelled(true);
-                            player.sendMessage("This is a blacklisted block!");
-                            break;
-                        }
-                    }
-                    break;
-                case WAITING, STARTING, STANDBY:
-                    event.setCancelled(true);
-                    player.sendMessage("The game hasn't started yet!");
-            }
-        }*/
     }
 
     @EventHandler
     public void onPlayerFallDamage (EntityDamageEvent event){
 
         if(event.getEntity() instanceof Player player){
+            if(arenaManager.findPlayerArena(player) == null){
+                event.setCancelled(true);
+                return;
+            }
+
             Arena playerArena = arenaManager.findPlayerArena(player);
 
             if (playerArena != null) {
@@ -478,35 +452,6 @@ public class GameEvents implements Listener {
         }
 
     }
-    // Event is meant to check if a player exits the menu system. If so it should empty the relevant hashmaps in itemManager.
-    /*@EventHandler
-    public void onInventoryEscape(InventoryCloseEvent event){
-
-        *//*if(arenaMenu.autoClosed){
-            arenaMenu.autoClosed = false;
-            return;
-        }*//*
-
-        if(event.getPlayer() instanceof Player player){
-
-
-
-            long lastInteractTime = lastInteract.getOrDefault(player.getUniqueId(), 0L);
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - lastInteractTime < 500) {
-                return;
-            }
-
-            if(!arenaMenu.autoClosed){
-                InventoryView viewClosedInventory = event.getView();
-                String inventoryName = ChatColor.stripColor(viewClosedInventory.getTitle());
-
-                player.sendMessage("This is the name of the closed inventory: " + inventoryName);
-            } else arenaMenu.autoClosed = false;
-
-        }
-
-    }*/
 
     @EventHandler
     public void playerInteract(PlayerInteractEvent event){
@@ -605,6 +550,18 @@ public class GameEvents implements Listener {
             event.setCancelled(true);
             String cleanedItem = arenaMenu.parseDeleteItem(itemName);
             arenaMenu.deleteBlacklistedBlock(player, cleanedItem);
+        } else if(inventoryTitle.equalsIgnoreCase("delete loot item?")){
+            if(!displayName.equalsIgnoreCase("delete loot item") && !displayName.equalsIgnoreCase("don't delete loot item")){
+                event.setCancelled(true);
+            }
+        } else if (inventoryTitle.equalsIgnoreCase("delete item?")){
+            if(!displayName.equalsIgnoreCase("delete item") && !displayName.equalsIgnoreCase("don't delete item")){
+                event.setCancelled(true);
+            }
+        } else if(inventoryTitle.equalsIgnoreCase("delete block?")){
+            if(!displayName.equalsIgnoreCase("delete block") && !displayName.equalsIgnoreCase("don't delete block")){
+                event.setCancelled(true);
+            }
         }
 
         String cleanedItem;
@@ -670,7 +627,6 @@ public class GameEvents implements Listener {
                 arenaName = arenaMenu.getArenaNamePage(player);
                 worldeditAPI.saveArenaRegionAsSchematic(player, arenaName, true);
                 worldeditAPI.saveLobbyRegionAsSchematic(player, arenaName, true);
-                // worldeditAPI.findLootChests(arenaName);
             case "competition mode":
                 event.setCancelled(true);
                 mode = "competitive";
@@ -690,6 +646,12 @@ public class GameEvents implements Listener {
                 break;
             case "confirm arena placement":
                 event.setCancelled(true);
+                // Spam filter
+                if(confirmArenaPosCheck.containsKey(playerId) && confirmArenaPosCheck.get(playerId)){
+                    confirmArenaPosCheck.remove(playerId);
+                    return;
+                }
+
                 arenaMenu.autoClosed = true;
                 ItemStack arenaWand = itemManager.getArenaWandItem(player);
                 player.getInventory().remove(arenaWand);
@@ -700,11 +662,16 @@ public class GameEvents implements Listener {
                 worldeditAPI.saveArenaRegionAsSchematic(player,arenaName, false);
                 arenaManager.writtenArenaLocation1.remove(playerId, arenaManager.writtenArenaLocation1.get(playerId));
                 arenaManager.writtenArenaLocation2.remove(playerId, arenaManager.writtenArenaLocation2.get(playerId));
-                //player.sendMessage(arenaName + " arena area set");
                 arenaMenu.closeInventory(player);
+                confirmArenaPosCheck.put(playerId, true);
                 break;
             case "confirm lobby placement":
                 event.setCancelled(true);
+                // Spam filter
+                if(confirmLobbyPosCheck.containsKey(playerId) && confirmLobbyPosCheck.get(playerId)){
+                    confirmLobbyPosCheck.remove(playerId);
+                    return;
+                }
                 arenaMenu.autoClosed = true;
                 ItemStack lobbyWand = itemManager.getLobbyWandItem(player);
                 player.getInventory().remove(lobbyWand);
@@ -715,13 +682,14 @@ public class GameEvents implements Listener {
                 worldeditAPI.saveLobbyRegionAsSchematic(player, arenaName, false);
                 arenaManager.writtenLobbyLocation1.remove(playerId, arenaManager.writtenLobbyLocation1.get(playerId));
                 arenaManager.writtenLobbyLocation2.remove(playerId, arenaManager.writtenLobbyLocation2.get(playerId));
-                //player.sendMessage(arenaName + " lobby area set");
                 arenaMenu.closeInventory(player);
+                confirmLobbyPosCheck.put(playerId, true);
                 break;
             case "set arena area":
                 event.setCancelled(true); // Denne var ikke her tidligere
                 arenaMenu.autoClosed = true;
                 event.setCancelled(true);
+                player.setGameMode(GameMode.CREATIVE);
                 player.getInventory().addItem(itemManager.getArenaWandItem(player));
                 player.sendMessage("You have received the Arena wand.");
                 arenaMenu.closeInventory(player);
@@ -729,6 +697,7 @@ public class GameEvents implements Listener {
             case "set lobby area":
                 event.setCancelled(true); // Denne var ikke her tidligere
                 arenaMenu.autoClosed = true;
+                player.setGameMode(GameMode.CREATIVE);
                 player.getInventory().addItem(itemManager.getLobbyWandItem(player));
                 player.sendMessage("You have received the Lobby wand.");
                 arenaMenu.closeInventory(player);
@@ -736,36 +705,36 @@ public class GameEvents implements Listener {
             case "set minimum players":
                 event.setCancelled(true);
                 arenaMenu.autoClosed = true;
-                arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "MIN_PLAYERS");
                 itemManager.setMinPlayers(player);
                 break;
             case "set maximum players":
                 event.setCancelled(true);
                 arenaMenu.autoClosed = true;
-                arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "MAX_PLAYERS");
                 itemManager.setMaxPlayers(player);
                 break;
             case "set min y-level":
                 event.setCancelled(true);
                 arenaMenu.autoClosed = true;
-                arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "MIN_Y");
                 itemManager.setMinY(player);
                 break;
             case "set max y-level":
                 event.setCancelled(true);
                 arenaMenu.autoClosed = true;
-                arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "MAX_Y");
                 itemManager.setMaxY(player);
                 break;
             case "generate spawns":
                 event.setCancelled(true);
+                if(generateSpawnCheck.containsKey(playerId) && generateSpawnCheck.get(playerId)){
+                    generateSpawnCheck.remove(playerId);
+                    return;
+                }
+
                 arenaName = arenaMenu.getArenaNamePage(player);
                 player.sendMessage("Trying to start finding spawnpoints for: " + arenaName);
-                FileConfiguration config = configManager.getArenaConfig();
                 File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
                 File schematicFile = new File(schematicDir, arenaName + ".schem");
                 if(arenaManager.getArena(arenaName) == null){
@@ -786,18 +755,17 @@ public class GameEvents implements Listener {
                 String finalArenaName = arenaName;
                 arenaManager.tryLogging(()-> arenaManager.setSpawnPoints(finalArenaName, player),
                         "Error when trying to create spawnpoints");
+                generateSpawnCheck.put(playerId, true);
                 break;
             case "set rise time":
                 event.setCancelled(true);
                 arenaMenu.autoClosed = true;
-                arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "RISE_TIME");
                 itemManager.setRiseTime(player);
                 break;
             case "set grace time":
                 event.setCancelled(true);
                 arenaMenu.autoClosed = true;
-                arenaName = arenaMenu.getArenaNamePage(player);
                 arenaMenu.setSubPage(player, "GRACE_TIME");
                 itemManager.setGraceTime(player);
                 break;
@@ -947,7 +915,7 @@ public class GameEvents implements Listener {
                 arenaName = arenaMenu.getArenaNamePage(player);
                 input = itemManager.writtenLootItemsValue.get(playerId);
                 if (itemManager.parseItemAmount(input) != -1) {
-                    arenaManager.setLootItem(arenaName, itemManager.parseItem(input), itemManager.parseItemAmount(input), player);
+                    arenaManager.setLootItem(arenaName, itemManager.parseItem(input), itemManager.parseItemAmount(input), itemManager.parseItemRarityFloat(input), player);
                 }
                 itemManager.clearMap(player);
                 arenaMenu.autoClosed = true;
@@ -959,6 +927,13 @@ public class GameEvents implements Listener {
                 arenaName = arenaMenu.getArenaNamePage(player);
                 String item = arenaMenu.deleteItemMap.get(playerId);
                 arenaManager.deleteStarterItem(arenaName, item, player);
+                arenaMenu.goBack(player);
+                break;
+            case "don't delete item":
+            case "don't delete loot item":
+                event.setCancelled(true);
+                arenaMenu.autoClosed = true;
+                arenaMenu.deleteItemMap.remove(player.getUniqueId());
                 arenaMenu.goBack(player);
                 break;
             case "delete loot item":
@@ -975,6 +950,12 @@ public class GameEvents implements Listener {
                 arenaName = arenaMenu.getArenaNamePage(player);
                 String block = arenaMenu.deleteBlockMap.get(playerId);
                 arenaManager.deleteBlacklistedItem(arenaName, block, player);
+                arenaMenu.goBack(player);
+                break;
+            case "don't delete block":
+                event.setCancelled(true);
+                arenaMenu.autoClosed = true;
+                arenaMenu.deleteBlockMap.remove(player.getUniqueId());
                 arenaMenu.goBack(player);
                 break;
             case "confirm blacklisted block":
@@ -1045,13 +1026,7 @@ public class GameEvents implements Listener {
                         itemManager.setBlacklistedBlocks(player);
                         break;
                 }
-
                 break;
-            /*case "cancel": // Closes the menu.
-                event.setCancelled(true);
-                arenaMenu.autoClosed = true;
-                arenaMenu.closeInventory(player);
-                break;*/
             case "arenas": // Sends player to the arenas menu
                 event.setCancelled(true);
                 arenaMenu.autoClosed = true;
@@ -1074,6 +1049,7 @@ public class GameEvents implements Listener {
                 break;
             case "border":
                 event.setCancelled(true);
+                break;
             default:
                 if (arenaManager.getArenas().contains(displayName)) {
                     event.setCancelled(true);
@@ -1081,8 +1057,8 @@ public class GameEvents implements Listener {
                     arenaMenu.closeListPage(player);
                     arenaMenu.openArenaPage(player, arenaManager.getArena(displayName));
                 }
+
         }
     }
-
 }
 

@@ -47,70 +47,6 @@ public class WorldeditAPI {
     }
 
 
-    // Not in use
-    /*public void findLootChests(String arenaName){
-        World world = loadWorld(arenaName);
-
-        Clipboard clipboard = loadArenaSchematic(arenaName, null);
-
-        BlockVector3 minPoint = clipboard.getMinimumPoint();
-        BlockVector3 maxPoint = clipboard.getMaximumPoint();
-
-        CuboidRegion region = new CuboidRegion(world, minPoint, maxPoint);
-
-        int height = region.getHeight();
-        int length = region.getLength();
-        int width = region.getWidth();
-
-        Bukkit.broadcastMessage("Region min point: " + minPoint);
-        Bukkit.broadcastMessage("Region max point: " + maxPoint);
-        Bukkit.broadcastMessage("Area height, length and width: " + height + ", " + length + ", " + width);
-
-        Block block;
-        org.bukkit.World bukkitWorld = BukkitAdapter.adapt(world);
-        Arena arena = arenaManager.getArena(arenaName);
-        List<Location> lootChestLocations = new ArrayList<>();
-
-        for(int y = minPoint.getBlockY(); y <= minPoint.getBlockY() + height; y++){
-            for(int x = minPoint.getBlockX(); x <= minPoint.getBlockX() + length; x++){
-                for(int z = minPoint.getBlockZ(); z <= minPoint.getBlockZ() + width; z++){
-                    block = bukkitWorld.getBlockAt(x, y, z);
-                    if(block.hasMetadata("Lootchest")){
-                        Bukkit.broadcastMessage("Lootchest found");
-                        lootChestLocations.add(new Location(bukkitWorld, x, y, z));
-                    }
-                }
-            }
-        }
-
-        arenaManager.lootChestLocations.put(arena, lootChestLocations);
-
-        if(arenaManager.lootChestLocations.get(arena).isEmpty()){
-            Bukkit.broadcastMessage("Error, couldn't find any loot chests");
-            return;
-        }
-
-        Bukkit.broadcastMessage("Number of lootchests found: " + arenaManager.lootChestLocations.get(arena).size());
-
-        ConfigurationSection configurationSection = configManager.getArenaConfig();
-        String path = "arenas." + arenaName + ".lootchest-locations.";
-        int posIndex = 1;
-
-        for(Map.Entry<Arena, List<Location>> entry : arenaManager.lootChestLocations.entrySet()){
-            List<Location> locations = entry.getValue();
-
-            for(Location location : locations){
-                configurationSection.set(path + "pos" + posIndex + ".x", location.getBlockX());
-                configurationSection.set(path + "pos" + posIndex + ".y", location.getBlockY());
-                configurationSection.set(path + "pos" + posIndex + ".z", location.getBlockZ());
-                posIndex++;
-            }
-        }
-
-        arenaManager.tryLogging(configManager::saveArenaConfig, "Error, couldn't save the locations of the lootchests");
-
-    }*/
-
     public void saveArenaRegionAsSchematic(Player player, String arenaName, boolean reloadSchematic){
 
         if(arenaManager.getArena(arenaName) == null){
@@ -148,13 +84,6 @@ public class WorldeditAPI {
             player.sendMessage("WorldEdit not found.");
             return;
         }
-
-        /*WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
-
-        if (worldEdit == null) {
-            player.sendMessage("WorldEdit not found.");
-            return;
-        }*/
 
         // Set or create shared directory for all arenas
         File schematicDirs = getDirectories();
@@ -243,17 +172,6 @@ public class WorldeditAPI {
             player.sendMessage("WorldEdit not found.");
             return;
         }
-
-
-        /*Arena arena = arenaManager.getArena(arenaName);
-
-        if (arena == null || arena.getLobbyLoc1() == null || arena.getLobbyLoc2() == null) {
-            player.sendMessage("Lobby locations not set or arena does not exist.");
-            return;
-        }
-
-        Location pos1 = arena.getLobbyLoc1();
-        Location pos2 = arena.getLobbyLoc2();*/
 
         WorldEditPlugin worldEdit = (WorldEditPlugin) Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
         if (worldEdit == null) {
@@ -445,7 +363,7 @@ public class WorldeditAPI {
                     .ignoreAirBlocks(false)
                     .build();
             Operations.complete(operation);
-            sender.sendMessage("Schematic: " + schematicFile + " successfully pasted at: " + point.getX() + " " + point.getY() + " " + point.getZ());
+            //sender.sendMessage("Schematic: " + schematicFile + " successfully pasted at: " + point.getX() + " " + point.getY() + " " + point.getZ());
         } catch (Exception e) {
             sender.sendMessage("Error when pasting schematic: " + e.getMessage());
             e.printStackTrace();
@@ -527,22 +445,6 @@ public class WorldeditAPI {
         } else {
             return null;
         }
-
-        /*String worldName = arenaSection.getString(basePath + ".worldName");
-
-        if(worldName == null){
-            Bukkit.broadcastMessage("This worldName doesn't exist.");
-            return null;
-        }
-
-        org.bukkit.World bukkitWorld = Bukkit.getWorld(worldName);
-
-        if(bukkitWorld == null){
-            return null;
-        }
-
-        World world = BukkitAdapter.adapt(bukkitWorld);*/
-
 
     }
     public BlockVector3 findArenaMaximumPointNonDebug(String arenaName){
