@@ -1,14 +1,15 @@
 name: LavaEscape
-version: 1.0
+version: ${project.version}
 main: com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin
+api-version: 1.13
 author:  Sirhiggelbottom
 description: A competitive and environmental survival Minecraft game where players escape rising lava.
 
 commands:
-  lava:
-    description: Base command for LavaEscape game management
-    usage: /<command> [create|lwand|join|leave|start|stop|reload|mode|arena|lobby|minplayers|maxplayers]
-    aliases: [le, lavaescape]
+  lavaEscape:
+    description: Opens the main menu
+    usage: /<command>
+    aliases: [lava menu, lava]
 
 permissions:
   lavaescape.admin:
@@ -23,3 +24,4 @@ permissions:
   lavaescape.modify:
     description: Allows modifying LavaEscape game settings
     default: op
+

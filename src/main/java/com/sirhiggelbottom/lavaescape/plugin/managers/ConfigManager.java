@@ -1,14 +1,11 @@
 package com.sirhiggelbottom.lavaescape.plugin.managers;
 
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
-import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +15,8 @@ public class ConfigManager {
     private FileConfiguration config;
     private File arenaFile;
     private FileConfiguration arenaConfig;
+    private File spawnPointFile;
+    private FileConfiguration spawnPointConfig;
 
     public ConfigManager(LavaEscapePlugin plugin) {
         this.plugin = plugin;
@@ -42,6 +41,18 @@ public class ConfigManager {
             }
         }
         arenaConfig = YamlConfiguration.loadConfiguration(arenaFile);
+
+        //Load or create the spawnPoint.yml
+        spawnPointFile = new File (plugin.getDataFolder(), "spawnPoint.yml");
+        if(!spawnPointFile.exists()){
+            try{
+                spawnPointFile.createNewFile();
+            }catch (IOException e){
+                plugin.getLogger().severe("Could not create spawnPoints.yml!");
+                e.printStackTrace();
+            }
+        }
+        spawnPointConfig = YamlConfiguration.loadConfiguration(spawnPointFile);
     }
 
     // Save the config.yml
@@ -64,16 +75,18 @@ public class ConfigManager {
         }
     }
 
-    // Example: Set minimum players for an arena
-    public void setMinPlayers(String arenaName, int minPlayers) {
-        arenaConfig.set(arenaName + ".minPlayers", minPlayers);
-        saveArenaConfig();
+    // Save the spawnPoint.yml
+
+    public void saveSpawnPointConfig(){
+        try{
+            spawnPointConfig.save(spawnPointFile);
+        }catch (IOException e){
+            plugin.getLogger().severe("Could not save spawnPoints.yml");
+            e.printStackTrace();
+        }
     }
 
-    // Example: Get minimum players for an arena
-    public int getMinPlayers(String arenaName) {
-        return arenaConfig.getInt(arenaName + ".minPlayers", 2); // Default to 2
-    }
+
 
     // Similar methods for other settings like maxPlayers, arena/lobby positions, etc.
 
@@ -84,7 +97,8 @@ public class ConfigManager {
         return config.getStringList("blacklisted-blocks");
     }
     // Method to parse item list strings into a list of ItemStacks
-    public List<ItemStack> parseItemsList(List<Map<String, Object>> itemsList) {
+
+    /*public List<ItemStack> parseItemsList(List<Map<String, Object>> itemsList) {
         List<ItemStack> itemList = new ArrayList<>();
         for (Map<String, Object> itemInfo : itemsList) {
             Material material = Material.matchMaterial((String) itemInfo.get("item"));
@@ -93,7 +107,7 @@ public class ConfigManager {
             itemList.add(item);
         }
         return itemList;
-    }
+    }*/
 
     // Set and Get methods for game modes
     public void setGameMode(String arenaName, String mode) {
@@ -105,28 +119,33 @@ public class ConfigManager {
         return arenaConfig.getString(arenaName + ".mode", "repetitive"); // Default to "repetitive"
     }
 
-    // Set and Get methods for grace period
-    public void setGracePeriod(int seconds) {
-        config.set("game-settings.grace-period", seconds);
-        saveConfig();
-    }
-
-    public int getGracePeriod() {
-        return config.getInt("game-settings.grace-period", 60); // Default to 60 seconds
-    }
-
     // Set and Get methods for starting items
     public void setStartingItems(List<Map<String, Object>> startingItems) {
         config.set("game-settings.start-items", startingItems);
         saveConfig();
     }
 
-    public List<ItemStack> getStartingItems() {
+    /*public List<ItemStack> getStarterItems() {
         List<Map<String, Object>> itemsList = (List<Map<String, Object>>) config.getList("game-settings.start-items");
         return parseItemsList(itemsList);
-    }
+    }*/
     public FileConfiguration getArenaConfig() {
         return arenaConfig;
+    }
+
+    public FileConfiguration getSpawnPointConfig(){
+        return spawnPointConfig;
+    }
+
+    public FileConfiguration getConfig(){
+        return config;
+    }
+
+    public void worldEditDIR(){
+        File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics");
+        if (!schematicDir.exists()) {
+            schematicDir.mkdirs();
+        }
     }
 
     // Additional utility methods for game settings
