@@ -21,7 +21,7 @@ The hottest PvP/PvE arena mini-game!
 
 
 ## Installation
-  - Download the LavaEscape plugin
+  - Download the LavaEscape plugin jar from [Spigot](https://www.spigotmc.org/resources/lavaescape.115377/)
   - Place it into your server plugins folder
   - Restart the server to enable the plugin
 
