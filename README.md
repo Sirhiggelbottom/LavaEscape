@@ -8,7 +8,7 @@ The hottest PvP/PvE arena mini-game!
   - A Menu system that lets you create and configure arenas, all with a single command!
   - Add starter items for players in each arena!
   - Stop players from ruining your beautiful decorations by blacklisting certain blocks!
-  - Add loot chests! (Not implemented yet)
+  - Add loot chests!
   - Add a lobby area for players to inspect the arena before the match and for dead players to spectate from!
   - Add a delay called Grace time for players to gather resources and loot without having to worry about each other or the rising lava.
   - Different arena modes!
