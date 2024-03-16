@@ -1387,10 +1387,8 @@ public class ArenaManager {
         }
 
         if(lootChestLocations.isEmpty()){
-            player.sendMessage("Couldn't find any chests");
             return new ArrayList<>();
         } else {
-            player.sendMessage("Found some chests");
             return lootChestLocations;
         }
     }
