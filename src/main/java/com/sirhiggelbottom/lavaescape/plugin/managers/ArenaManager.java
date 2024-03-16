@@ -661,6 +661,7 @@ public class ArenaManager {
         Arena arena = arenaNames.get(arenaName);
         if (arena != null) {
             arena.removePlayer(player);
+            Bukkit.broadcastMessage("Remaining players: " + arena.getPlayerAmount());
             openLootchests.remove(player.getUniqueId());
             isGameOver(arenaName);
         }
@@ -1157,7 +1158,7 @@ public class ArenaManager {
 
     public Location getLocationFromConfig(String arenaName, String area, String position){
 
-        String path = area.equalsIgnoreCase("arena") ? "arenas." + arenaName + ".arena." + position : "arenas." + arenaName + ".lobby." + position; // Path is defined based on which area is set when method is called.
+        String path = area.equalsIgnoreCase("arena") ? "arenas." + arenaName + ".arena." + position : "arenas." + arenaName + ".lobby." + position; // Path is defined based on which area is set when the method is called.
         FileConfiguration arenaConfig = configManager.getArenaConfig();
 
         if(arenaConfig.getConfigurationSection(path) == null){

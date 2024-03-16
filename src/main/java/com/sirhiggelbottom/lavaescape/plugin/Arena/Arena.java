@@ -110,9 +110,10 @@ public class Arena {
 
         players.remove(player);
 
-        Bukkit.broadcastMessage("Remaining players: " + players.size());
-        // Additional logic for removing a player
+    }
 
+    public int getPlayerAmount(){
+        return players.size();
     }
 
     public Set<Player> getPlayers() {

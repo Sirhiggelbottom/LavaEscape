@@ -62,6 +62,7 @@ public class GameEvents implements Listener {
     private Map<UUID, Boolean> confirmLobbyPosCheck = new HashMap<>();
     private Map<UUID, Boolean> generateSpawnCheck = new HashMap<>();
     private Map<UUID, Boolean> blockBreakCheck = new HashMap<>();
+    private Map<UUID, Boolean> updateCheck = new HashMap<>();
 
     /*
      waitingForInput
@@ -261,8 +262,7 @@ public class GameEvents implements Listener {
                             chest = (Chest) block.getState();
                             chest.setCustomName(ChatColor.GOLD + "Loot chest");
                             chest.update();
-                            player.sendMessage("Lootchest placed at: " + lootChestLocation);
-                            player.sendMessage("Name of the inventory in the placed loot chest: " + chest.getCustomName());
+                            player.sendMessage("Lootchest placed at: " + lootChestLocation.getX() + ", " + lootChestLocation.getY() + ", " + lootChestLocation.getZ());
                         }
                     }
                 }
@@ -624,9 +624,14 @@ public class GameEvents implements Listener {
                 break;
             case "update arena":
                 event.setCancelled(true);
+                if(updateCheck.containsKey(playerId) && updateCheck.get(playerId)){ // Spam filter
+                    updateCheck.remove(playerId);
+                    return;
+                }
                 arenaName = arenaMenu.getArenaNamePage(player);
                 worldeditAPI.saveArenaRegionAsSchematic(player, arenaName, true);
                 worldeditAPI.saveLobbyRegionAsSchematic(player, arenaName, true);
+                updateCheck.put(playerId, true);
             case "competition mode":
                 event.setCancelled(true);
                 mode = "competitive";
