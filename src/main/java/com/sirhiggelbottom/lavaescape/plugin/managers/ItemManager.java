@@ -349,7 +349,7 @@ public class ItemManager {
 
                     String input = stateSnapshot.getText();
 
-                    if(!input.isBlank() && correctBlockMaterialName(input) && correctRarity(input)){
+                    if(!input.isBlank() && correctBlockMaterialName(input)){
 
                         closeAnvilGuiPage(stateSnapshot.getPlayer());
                         writtenBlacklistetBlocksValue.put(playerId, input);

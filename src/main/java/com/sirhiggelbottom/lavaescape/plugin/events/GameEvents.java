@@ -203,14 +203,18 @@ public class GameEvents implements Listener {
                 event.setCancelled(true);
 
                 Arena playerArena = arenaManager.findPlayerArena(player);
+
+                //@Todo Når spillere er i lobby så må ikke denne fyre av.
+
                 if (playerArena != null) {
 
-                    arenaManager.teleportLobby(player, playerArena.getName());
-                    arenaManager.healPlayer(player);
-                    arenaManager.restorePlayerInventory(player);
-                    player.setGameMode(GameMode.ADVENTURE);
-                    arenaManager.removePlayerFromArena(playerArena.getName(), player);
-
+                    if(playerArena.getGameState().equals(ArenaManager.GameState.LAVA) || playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH)){
+                        arenaManager.teleportLobby(player, playerArena.getName());
+                        arenaManager.healPlayer(player);
+                        arenaManager.restorePlayerInventory(player);
+                        player.setGameMode(GameMode.ADVENTURE);
+                        arenaManager.removePlayerFromArena(playerArena.getName(), player);
+                    }
                 }
             }
         }
@@ -343,7 +347,7 @@ public class GameEvents implements Listener {
         if (playerArena != null) {
             event.setCancelled(!playerArena.getGameState().equals(ArenaManager.GameState.LAVA) && !playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH));
         } else if(!globalPvPmode){
-            event.setCancelled(true); // @ToDo Fix: Players can hurt each other when they aren't in a arena, and globalPVP doesn't work. Edit: Think it's fixed
+            event.setCancelled(true);
         }
 
     }

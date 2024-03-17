@@ -321,7 +321,7 @@ public class WorldeditAPI {
         File schematicDir = new File (plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
         File schematicFile = new File(schematicDir, arenaName + "_lobby" + ".schem");
 
-        sender.sendMessage("Trying to load: " + schematicFile);
+        //sender.sendMessage("Trying to load: " + schematicFile);
 
         if (!schematicFile.exists()) {
             sender.sendMessage("schematic doesn't exist");

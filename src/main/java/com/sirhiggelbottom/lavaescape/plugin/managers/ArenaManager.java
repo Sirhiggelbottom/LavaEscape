@@ -805,7 +805,7 @@ public class ArenaManager {
         Arena arena = getArena(arenaName);
         String basePath = "arenas." + arena.getName();
         List<Location> spawnPoints = findSpawnPoints(arenaName, sender);
-        Bukkit.broadcastMessage("Trying to set spawnpoints for " + arena.getName());
+        sender.sendMessage("Trying to set spawnpoints for " + arena.getName());
         // Creating a new arena section in spawnPoint.yml
 
         tryLogging(() -> configManager.getSpawnPointConfig().createSection(basePath),
