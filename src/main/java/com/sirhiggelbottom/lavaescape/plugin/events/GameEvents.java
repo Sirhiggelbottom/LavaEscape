@@ -53,7 +53,7 @@ public class GameEvents implements Listener {
         this.playerArenaSelections = new HashMap<>();
         this.playerLobbySelections = new HashMap<>();
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
-        this.globalPvPmode = arenaManager.getPvpMode();
+        globalPvPmode = arenaManager.getPvpMode();
 
     }
 
@@ -338,12 +338,21 @@ public class GameEvents implements Listener {
 
         UUID playerId = event.getDamager().getUniqueId();
         Player player = event.getDamager().getServer().getPlayer(playerId);
+
         Arena playerArena = arenaManager.findPlayerArena(player);
+        globalPvPmode = arenaManager.getCurrentPvPMode();
 
         if (playerArena != null) {
-            event.setCancelled(!playerArena.getGameState().equals(ArenaManager.GameState.LAVA) && !playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH));
+
+            if(playerArena.getGameState().equals(ArenaManager.GameState.LAVA) || playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH)) return;
+
+            event.setCancelled(true);
+            player.sendMessage("Pvp hasn't started.");
+
         } else if(!globalPvPmode){
-            event.setCancelled(true); // @ToDo Fix: Players can hurt each other when they aren't in a arena, and globalPVP doesn't work. Edit: Think it's fixed
+            event.setCancelled(true);
+            player.sendMessage("You can't hurt players right now");
+
         }
 
     }

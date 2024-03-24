@@ -641,7 +641,6 @@ public class ItemManager {
 
         return create;
     }
-
     public ItemStack getWriteableItem(String explanation){
         ItemStack writeableItem = new ItemStack(Material.PAPER);
         ItemMeta meta = writeableItem.getItemMeta();

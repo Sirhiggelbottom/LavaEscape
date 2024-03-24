@@ -11,6 +11,8 @@ import java.util.Map;
 
 public class ConfigManager {
     private final LavaEscapePlugin plugin;
+
+    private File folder;
     private File configFile;
     private FileConfiguration config;
     private File arenaFile;
@@ -23,12 +25,19 @@ public class ConfigManager {
         this.loadConfig();
     }
     private void loadConfig() {
-        // Load or create the config.yml
+
+        folder = new File(plugin.getDataFolder(), "LavaEscape");
+        if(!folder.exists()){
+            folder.mkdirs();
+        }
+
+
+        /*// Load or create the config.yml
         configFile = new File(plugin.getDataFolder(), "config.yml");
         if (!configFile.exists()) {
             plugin.saveResource("config.yml", false);
         }
-        config = YamlConfiguration.loadConfiguration(configFile);
+        config = YamlConfiguration.loadConfiguration(configFile);*/
 
         // Load or create the Arena.yml
         arenaFile = new File(plugin.getDataFolder(), "Arena.yml");

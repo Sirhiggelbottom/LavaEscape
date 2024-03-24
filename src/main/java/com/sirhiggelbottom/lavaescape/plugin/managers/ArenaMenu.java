@@ -63,6 +63,7 @@ public class ArenaMenu {
     // Distributes arenas contents into 6 different arrays.
     private void distributeArenas(){
         reloadArenaList();
+        if(arenas == null) return;
         arenasDistributed.clear(); // Clears the list to reset it.
 
         for(int i = 0; i < 6; i++){
@@ -82,6 +83,7 @@ public class ArenaMenu {
     }
 
     private void initializeArenaPages(){
+        if(arenas == null) return;
         for(String arena : arenas){
             initializeSubPages(arena);
         }
@@ -649,6 +651,8 @@ public class ArenaMenu {
     }
 
     public void createArenaPages(Player player, int pageNumber){
+
+        if(arenaManager.getArenas() == null) return;
 
         int arenaPageSize = 45;
         int backSlot = 0;

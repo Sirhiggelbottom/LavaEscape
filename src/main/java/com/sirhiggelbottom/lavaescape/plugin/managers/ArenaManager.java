@@ -604,12 +604,19 @@ public class ArenaManager {
         String fullPath = basePath + "PvPMode";
         configurationSection.set(fullPath, mode);
 
+
         configManager.saveArenaConfig();
     }
     public Boolean getPvpMode(){
-        String basePath = "Global settings.";
         ConfigurationSection configurationSection = configManager.getArenaConfig();
+
+        if(configurationSection.get("Global settings.PvPMode") == null){
+            return false;
+        }
+
         String mode = configurationSection.get("Global settings.PvPMode").toString();
+
+
         if(mode.equalsIgnoreCase("true")){
             return true;
         } else if (mode.equalsIgnoreCase("false")) {
@@ -779,12 +786,14 @@ public class ArenaManager {
     public Arena getArena(String arenaName) {
         return arenaNames.get(arenaName);
     }
+
     public List<String> getArenas() {
         List<String> arenaNames;
         ConfigurationSection arenasSection = configManager.getArenaConfig().getConfigurationSection("arenas.");
         if (arenasSection != null) {
             arenaNames = new ArrayList<>(arenasSection.getKeys(false));
         } else return null;
+
         return arenaNames;
     }
     public Arena findPlayerArena(Player player){
