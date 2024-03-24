@@ -9,7 +9,11 @@ commands:
   lavaEscape:
     description: Opens the main menu
     usage: /<command>
-    aliases: [lava menu, lava]
+    aliases: [lava]
+  debug:
+    description: enables debug mode
+    usage: /<command>
+    aliases: db
 
 permissions:
   lavaescape.admin:

@@ -429,15 +429,14 @@ public class ArenaManager {
             }
         }
 
-        if(loot.isEmpty()){
-            Bukkit.broadcastMessage("The loot chest was empty, trying again");
+        if(loot.size() < 3){
             spawnLootItems(inv, arenaName);
         } else {
             for(ItemStack item : loot){
                 HashMap<Integer, ItemStack> unfittedItems = inv.addItem(item);
 
                 if(!unfittedItems.isEmpty()){
-                    Bukkit.broadcastMessage("Couldn't fit all the items, amount of items left: " + unfittedItems.size());
+                    //Bukkit.broadcastMessage("Couldn't fit all the items, amount of items left: " + unfittedItems.size());
                 }
             }
         }
@@ -1396,10 +1395,10 @@ public class ArenaManager {
         }
 
         if(lootChestLocations.isEmpty()){
-            player.sendMessage("Couldn't find any chests");
+            //player.sendMessage("Couldn't find any chests");
             return new ArrayList<>();
         } else {
-            player.sendMessage("Found some chests");
+            //player.sendMessage("Found some chests");
             return lootChestLocations;
         }
     }

@@ -98,11 +98,11 @@ public class GameManager {
             return;
         }
 
+        arena.setGameState(ArenaManager.GameState.STARTING);
         arenaManager.randomArenaTeleport(arenaName,arenaManager.getSpawnPoints(arenaName));
         arenaManager.storeAndClearPlayersInventory(arenaName);
         arenaManager.giveStartingItems(arenaName);
         arenaManager.setSurvivalGamemode(arenaName);
-        arena.setGameState(ArenaManager.GameState.STARTING);
         plugin.setShouldContinueFilling(true);
         lavaTask(arenaName);
 
@@ -152,8 +152,13 @@ public class GameManager {
 
             @Override
             public void run() {
+
+                if(currentY == worldeditAPI.findArenaMinimumPointNonDebug(arenaName).getY()){
+                    Bukkit.broadcastMessage("The lava is rising!");
+                }
+
                 int maxY = Ymax;
-                Bukkit.broadcastMessage("Max lava level is: " + maxY + " and currentY is set to: " + currentY);
+
                 if(!plugin.shouldContinueFilling() || currentY >= maxY){
                     Bukkit.broadcastMessage("Lava is no longer rising.");
                     arena.setGameState(ArenaManager.GameState.WAITING);
@@ -165,7 +170,6 @@ public class GameManager {
                 }
 
                 fillLava(arenaName, currentY);
-                Bukkit.broadcastMessage("Y-level: " + currentY + " is being filled with lava");
                 currentY++;
             }
         }, 20L * gracePeriod,20L * riseTime);

@@ -10,8 +10,10 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -62,6 +64,7 @@ public class GameEvents implements Listener {
     private Map<UUID, Boolean> confirmLobbyPosCheck = new HashMap<>();
     private Map<UUID, Boolean> generateSpawnCheck = new HashMap<>();
     private Map<UUID, Boolean> blockBreakCheck = new HashMap<>();
+    private Map<UUID, Boolean> playerDamage = new HashMap<>();
 
     /*
      waitingForInput
@@ -333,27 +336,45 @@ public class GameEvents implements Listener {
 
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerDamage (EntityDamageByEntityEvent event){
 
         UUID playerId = event.getDamager().getUniqueId();
-        Player player = event.getDamager().getServer().getPlayer(playerId);
+        // Player player = event.getDamager().getServer().getPlayer(playerId);
+        Entity damager = event.getDamager();
 
-        Arena playerArena = arenaManager.findPlayerArena(player);
-        globalPvPmode = arenaManager.getCurrentPvPMode();
+        if(playerDamage.containsKey(playerId) && playerDamage.get(playerId)){
+            playerDamage.remove(playerId);
+            return;
+        }
 
-        if (playerArena != null) {
+        if(damager instanceof Player player){
 
-            if(playerArena.getGameState().equals(ArenaManager.GameState.LAVA) || playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH)) return;
+            Arena playerArena = arenaManager.findPlayerArena(player);
+            globalPvPmode = arenaManager.getCurrentPvPMode();
 
-            event.setCancelled(true);
-            player.sendMessage("Pvp hasn't started.");
+            if (playerArena != null) {
+                if(playerArena.getGameState().equals(ArenaManager.GameState.LAVA) || playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH)) {
 
-        } else if(!globalPvPmode){
-            event.setCancelled(true);
-            player.sendMessage("You can't hurt players right now");
+                    event.setCancelled(false);
+
+                } else {
+                    event.setCancelled(true);
+                    player.sendMessage("Pvp hasn't started.");
+                }
+
+            } else if(!globalPvPmode){
+
+                event.setCancelled(true);
+                player.sendMessage("You can't hurt players right now");
+
+            } else {
+                event.setCancelled(false);
+            }
 
         }
+
+        playerDamage.put(playerId, true);
 
     }
 
@@ -618,11 +639,15 @@ public class GameEvents implements Listener {
             case "join arena":
                 event.setCancelled(true);
                 arenaName = arenaMenu.getArenaNamePage(player);
-                arenaManager.addPlayerToArena(arenaName, player);
-                arenaManager.teleportLobby(player, arenaName);
-                gameManager.isGameReady(arenaName);
-                arenaMenu.autoClosed = true;
-                arenaMenu.closeInventory(player);
+                if(arenaManager.getGameStage(arenaName).equals("STANDBY") || arenaManager.getGameStage(arenaName).equals("WAITING")){
+                    arenaManager.addPlayerToArena(arenaName, player);
+                    arenaManager.teleportLobby(player, arenaName);
+                    gameManager.isGameReady(arenaName);
+                    arenaMenu.autoClosed = true;
+                    arenaMenu.closeInventory(player);
+                } else{
+                    player.sendMessage("Match has already started, wait until the next one starts.");
+                }
                 break;
             case "normal mode":
                 event.setCancelled(true);

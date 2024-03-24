@@ -210,7 +210,13 @@ public class ArenaMenu {
         boolean isAdmin = player.hasPermission("lavaescape.admin");
         Inventory inv = Bukkit.createInventory(null, arenaPageSize, arenaName);
 
-        List<Integer> nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, joinSlot, configSlot, startSlot, restartSlot, resetArenaSlot, exitSlot));
+        List<Integer> nonBoarderItems;
+
+        if(isAdmin){
+            nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, joinSlot, configSlot, startSlot, restartSlot, resetArenaSlot, exitSlot));
+        } else {
+            nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, joinSlot, exitSlot));
+        }
 
         inv.setItem(joinSlot, itemManager.getJoinItem());
 

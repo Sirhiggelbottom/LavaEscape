@@ -110,7 +110,10 @@ public class Arena {
 
         players.remove(player);
 
-        Bukkit.broadcastMessage("Remaining players: " + players.size());
+        if(players.size() > 1){
+            Bukkit.broadcastMessage("Remaining players: " + players.size());
+        }
+
         // Additional logic for removing a player
 
     }

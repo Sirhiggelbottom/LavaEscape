@@ -40,7 +40,13 @@ public class LavaEscapePlugin extends JavaPlugin {
 
         this.getServer().getPluginManager().registerEvents(gameEvents, this);
 
-        getCommand("lavaEscape").setExecutor(new LavaCommandExecutor(arenaMenu));
+        // Initialize command executor and bind commands
+        LavaCommandExecutor commandExecutor = new LavaCommandExecutor(arenaManager, gameManager, arenaMenu);
+
+        getCommand("lava").setExecutor(commandExecutor);
+
+        // Implementing Tab Completer for the commands
+        getCommand("lava").setTabCompleter(commandExecutor);
 
     }
 
