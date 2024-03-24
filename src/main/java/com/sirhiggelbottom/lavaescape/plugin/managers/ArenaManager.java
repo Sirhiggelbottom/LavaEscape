@@ -1013,10 +1013,11 @@ public class ArenaManager {
     }
     public void randomArenaTeleport (String arenaName, List<Location> spawnPoints){
         Arena arena = getArena(arenaName);
-        Set<Player> players = arena.getStartingPlayers();
+        //Set<Player> players = arena.getStartingPlayers();
         List<Location> availableSpawns = spawnPoints.stream()
                 .filter(spawn -> !usedSpawns.contains(spawn))
                 .toList();
+
         if (availableSpawns.isEmpty()) {
             Bukkit.broadcastMessage("No available spawn points.");
             return;
@@ -1024,7 +1025,7 @@ public class ArenaManager {
 
         Random random = new Random();
 
-        for(Player player : players){
+        for(Player player : arena.getStartingPlayers()){
 
             int randomIndex = random.nextInt(availableSpawns.size());
             Location randomSpawnpoint = availableSpawns.get(randomIndex);
@@ -1033,6 +1034,16 @@ public class ArenaManager {
             usedSpawns.add(randomSpawnpoint);
 
         }
+
+        /*for(Player player : players){
+
+            int randomIndex = random.nextInt(availableSpawns.size());
+            Location randomSpawnpoint = availableSpawns.get(randomIndex);
+
+            player.teleport(randomSpawnpoint);
+            usedSpawns.add(randomSpawnpoint);
+
+        }*/
 
     }
     public void checkOnlinePlayers(String arenaName){

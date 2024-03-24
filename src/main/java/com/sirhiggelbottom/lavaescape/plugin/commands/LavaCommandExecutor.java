@@ -42,6 +42,7 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             return true;
         } else if(isAdmin && args.length == 2 && args[0].equalsIgnoreCase("leftover") && arenaManager.getArenas().contains(args[1])){
             handleLeftoverCommand(player, args[1]);
+            return true;
         }
 
         return false;
@@ -58,25 +59,41 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
             lobbyUUID.add(playerId);
         }
 
-        Set<Player> leftoverPlayers = new HashSet<>();
+        List<String> leftoverPlayers = new ArrayList<>();
         UUID playerId;
 
         for(Player onlinePlayer : onlinePlayers){
             playerId = onlinePlayer.getUniqueId();
 
             if(!lobbyUUID.contains(playerId)){
-                leftoverPlayers.add(onlinePlayer);
+                leftoverPlayers.add(onlinePlayer.toString());
             }
         }
 
         if(!leftoverPlayers.isEmpty()){
-            player.sendMessage(List.of(leftoverPlayers).toString());
+            List<String> message = new ArrayList<>();
+            String filterString;
+            String[] part1;
+
+
+            for (String leftoverPlayer : leftoverPlayers) {
+                part1 = leftoverPlayer.split("\\{name=");
+                filterString = part1[1];
+
+                part1 = filterString.split("}]");
+                filterString = part1[0];
+
+                message.add(filterString);
+            }
+            player.sendMessage(message.toString());
         }
 
     }
 
     private void handleJoinCommand(CommandSender sender, String arenaName) {
+
         Player player = (Player) sender;
+
         if(arenaManager.getGameStage(arenaName).equals("STANDBY") || arenaManager.getGameStage(arenaName).equals("WAITING")){
             arenaManager.addPlayerToArena(arenaName, player);
             arenaManager.teleportLobby(player, arenaName);
