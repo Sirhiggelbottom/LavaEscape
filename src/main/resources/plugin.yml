@@ -8,7 +8,7 @@ description: A competitive and environmental survival Minecraft game where playe
 commands:
   lavaEscape:
     description: Opens the main menu
-    usage: /<command>
+    usage: /<command> [arguments] - For specific commands, see in-game instructions.
     aliases: [lava]
   debug:
     description: enables debug mode

@@ -4,10 +4,7 @@ import com.sirhiggelbottom.lavaescape.plugin.API.WorldeditAPI;
 import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.LavaEscapePlugin;
 import com.sirhiggelbottom.lavaescape.plugin.managers.*;
-import org.bukkit.ChatColor;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Material;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.entity.Entity;
@@ -24,6 +21,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -155,6 +154,7 @@ public class GameEvents implements Listener {
 
     }
 
+
     public Location getFirstArenaPosition (UUID playerId){
         Location[] selections = playerArenaSelections.get(playerId);
         return (selections != null && selections[0] != null) ? selections[0] : null;
@@ -195,27 +195,259 @@ public class GameEvents implements Listener {
     private final Map<UUID , Long> lastInteract = new HashMap<>();
 
     @EventHandler
+    public void onPlayerDamage(EntityDamageEvent event){
+        if(event.getEntity() instanceof Player player){
+
+            EntityDamageEvent.DamageCause cause = event.getCause();
+            Arena playerArena = arenaManager.findPlayerArena(player);
+
+            if(playerArena == null){
+                event.setCancelled(true);
+                return;
+            }
+
+            boolean validDamage = playerArena.getGameState().equals(ArenaManager.GameState.LAVA) || playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH);
+            switch (cause){
+                case LAVA:
+                    if(validDamage && player.getHealth() - event.getFinalDamage() <= 0){
+
+                        arenaManager.removePlayerFromArena(playerArena.getName(), player);
+                        arenaManager.teleportLobby(player, playerArena.getName());
+                        arenaManager.healPlayer(player);
+                        arenaManager.restorePlayerInventory(player);
+                        player.setGameMode(GameMode.ADVENTURE);
+
+                        Bukkit.broadcastMessage(player.getName() + " died when trying to swim in lava.");
+                    } else if(!validDamage){
+                        event.setCancelled(true);
+                    }
+                break;
+                case FALL:
+
+                    if(validDamage && player.getHealth() - event.getFinalDamage() <= 0){
+
+                        arenaManager.removePlayerFromArena(playerArena.getName(), player);
+                        arenaManager.teleportLobby(player, playerArena.getName());
+                        arenaManager.healPlayer(player);
+                        arenaManager.restorePlayerInventory(player);
+                        player.setGameMode(GameMode.ADVENTURE);
+
+                        Bukkit.broadcastMessage(player.getName() + " tried to fly");
+                    } else if(!validDamage) {
+                        event.setCancelled(true);
+                    }
+                break;
+                case FIRE_TICK:
+                    if(validDamage && player.getHealth() - event.getFinalDamage() <= 0){
+
+                        arenaManager.removePlayerFromArena(playerArena.getName(), player);
+                        arenaManager.teleportLobby(player, playerArena.getName());
+                        arenaManager.healPlayer(player);
+                        arenaManager.restorePlayerInventory(player);
+                        player.setGameMode(GameMode.ADVENTURE);
+
+                        Bukkit.broadcastMessage(player.getName() + " got roasted");
+                    } else if (!validDamage) {
+                        event.setCancelled(true);
+                    }
+                break;
+
+            }
+
+
+        }
+    }
+
+    private void playerDied(Player player, Arena playerArena){
+
+        arenaManager.removePlayerFromArena(playerArena.getName(), player);
+        arenaManager.teleportLobby(player, playerArena.getName());
+        arenaManager.healPlayer(player);
+        arenaManager.restorePlayerInventory(player);
+        player.setGameMode(GameMode.ADVENTURE);
+
+    }
+
+    /*@EventHandler
     public void onFatalDamage (EntityDamageEvent event){
 
         if (event.getEntity() instanceof Player player) {
 
-
             if (player.getHealth() - event.getFinalDamage() <= 0) {
-
-                event.setCancelled(true);
 
                 Arena playerArena = arenaManager.findPlayerArena(player);
                 if (playerArena != null) {
 
+                    arenaManager.removePlayerFromArena(playerArena.getName(), player);
                     arenaManager.teleportLobby(player, playerArena.getName());
                     arenaManager.healPlayer(player);
                     arenaManager.restorePlayerInventory(player);
                     player.setGameMode(GameMode.ADVENTURE);
-                    arenaManager.removePlayerFromArena(playerArena.getName(), player);
+
+                }
+
+                event.setCancelled(true);
+            }
+        }
+    }*/
+
+    /*@EventHandler
+    public void onPlayerFallDamage (EntityDamageEvent event){
+
+        if(event.getEntity() instanceof Player player){
+            if(arenaManager.findPlayerArena(player) == null){
+                event.setCancelled(true);
+                return;
+            }
+
+            Arena playerArena = arenaManager.findPlayerArena(player);
+
+            if (playerArena != null) {
+                event.setCancelled(!playerArena.getGameState().equals(ArenaManager.GameState.LAVA) && !playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH));
+            }
+
+        }
+
+    }*/
+
+    private void checkForValidDamage(EntityDamageByEntityEvent event){
+        UUID playerId = event.getDamager().getUniqueId();
+        Entity damager = event.getDamager();
+
+
+
+        if(playerDamage.containsKey(playerId) && playerDamage.get(playerId)){
+            playerDamage.remove(playerId);
+            return;
+        }
+
+        if(damager instanceof Player player){
+
+            Arena playerArena = arenaManager.findPlayerArena(player);
+            globalPvPmode = arenaManager.getCurrentPvPMode();
+
+            if (playerArena != null) {
+                if(playerArena.getGameState().equals(ArenaManager.GameState.LAVA) || playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH)) {
+
+                    event.setCancelled(false);
+
+                } else {
+                    event.setCancelled(true);
+                    player.sendMessage("Pvp hasn't started.");
+                }
+
+            } else if(!globalPvPmode){
+
+                event.setCancelled(true);
+                player.sendMessage("You can't hurt players right now");
+
+            } else {
+                event.setCancelled(false);
+            }
+
+        }
+
+        playerDamage.put(playerId, true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPlayerDamage (EntityDamageByEntityEvent event){
+
+        checkForValidDamage(event);
+        Entity damagedEntity = event.getEntity();
+        if(damagedEntity instanceof Player player){
+            Arena arena = arenaManager.findPlayerArena(player);
+            if(arena == null){
+                event.setCancelled(true);
+                return;
+            }
+            if(player.getHealth() - event.getFinalDamage() <= 0){
+                if(event.getDamager() instanceof Player damager){
+                    arenaManager.removePlayerFromArena(arena.getName(), player);
+                    arenaManager.teleportLobby(player, arena.getName());
+                    arenaManager.healPlayer(player);
+                    arenaManager.restorePlayerInventory(player);
+                    player.setGameMode(GameMode.ADVENTURE);
+
+                    String damagerString = damager.getName();
+                    String damagedString = player.getName();
+
+                    if(damagerString.contains("\\{name=") && damagedString.contains("\\{name=")){
+                        String[] part1 = damager.getName().split("\\{name=");
+                        String damagerName = part1[1];
+
+                        part1 = damagerName.split("}]");
+                        damagerName = part1[0];
+
+                        String[] part2 = player.getName().split("\\{name=");
+                        String damagedName = part2[1];
+
+                        part2 = damagedName.split("}]");
+                        damagedName = part2[0];
+
+                        Bukkit.broadcastMessage(damagerName + " killed " + damagedName);
+                    } else {
+                        Bukkit.broadcastMessage(damagerString + " killed " + damagedString);
+                    }
+
+                    /*String[] part1 = damager.getName().split("\\{name=");
+                    String damagerName = part1[1];
+
+                    part1 = damagerName.split("}]");
+                    damagerName = part1[0];
+
+                    String[] part2 = player.getName().split("\\{name=");
+                    String damagedName = part2[1];
+
+                    part2 = damagedName.split("}]");
+                    damagedName = part2[0];
+
+                    Bukkit.broadcastMessage(damagerName + " killed " + damagedName);*/
 
                 }
             }
         }
+
+
+
+
+        /*UUID playerId = event.getDamager().getUniqueId();
+        Entity damager = event.getDamager();
+
+
+
+        if(playerDamage.containsKey(playerId) && playerDamage.get(playerId)){
+            playerDamage.remove(playerId);
+            return;
+        }
+
+        if(damager instanceof Player player){
+
+            Arena playerArena = arenaManager.findPlayerArena(player);
+            globalPvPmode = arenaManager.getCurrentPvPMode();
+
+            if (playerArena != null) {
+                if(playerArena.getGameState().equals(ArenaManager.GameState.LAVA) || playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH)) {
+
+                    event.setCancelled(false);
+
+                } else {
+                    event.setCancelled(true);
+                    player.sendMessage("Pvp hasn't started.");
+                }
+
+            } else if(!globalPvPmode){
+
+                event.setCancelled(true);
+                player.sendMessage("You can't hurt players right now");
+
+            } else {
+                event.setCancelled(false);
+            }
+
+        }
+
+        playerDamage.put(playerId, true);*/
 
     }
 
@@ -336,47 +568,7 @@ public class GameEvents implements Listener {
 
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onPlayerDamage (EntityDamageByEntityEvent event){
 
-        UUID playerId = event.getDamager().getUniqueId();
-        // Player player = event.getDamager().getServer().getPlayer(playerId);
-        Entity damager = event.getDamager();
-
-        if(playerDamage.containsKey(playerId) && playerDamage.get(playerId)){
-            playerDamage.remove(playerId);
-            return;
-        }
-
-        if(damager instanceof Player player){
-
-            Arena playerArena = arenaManager.findPlayerArena(player);
-            globalPvPmode = arenaManager.getCurrentPvPMode();
-
-            if (playerArena != null) {
-                if(playerArena.getGameState().equals(ArenaManager.GameState.LAVA) || playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH)) {
-
-                    event.setCancelled(false);
-
-                } else {
-                    event.setCancelled(true);
-                    player.sendMessage("Pvp hasn't started.");
-                }
-
-            } else if(!globalPvPmode){
-
-                event.setCancelled(true);
-                player.sendMessage("You can't hurt players right now");
-
-            } else {
-                event.setCancelled(false);
-            }
-
-        }
-
-        playerDamage.put(playerId, true);
-
-    }
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event){
@@ -464,24 +656,7 @@ public class GameEvents implements Listener {
 
     }
 
-    @EventHandler
-    public void onPlayerFallDamage (EntityDamageEvent event){
 
-        if(event.getEntity() instanceof Player player){
-            if(arenaManager.findPlayerArena(player) == null){
-                event.setCancelled(true);
-                return;
-            }
-
-            Arena playerArena = arenaManager.findPlayerArena(player);
-
-            if (playerArena != null) {
-                event.setCancelled(!playerArena.getGameState().equals(ArenaManager.GameState.LAVA) && !playerArena.getGameState().equals(ArenaManager.GameState.DEATHMATCH));
-            }
-
-        }
-
-    }
 
     @EventHandler
     public void playerInteract(PlayerInteractEvent event){
@@ -528,6 +703,45 @@ public class GameEvents implements Listener {
                     arenaManager.stopLootChestPlacement(arenaManager.findPlayerArena(player).getName(), player);
                 }
         }
+    }
+
+    //Clears the inventory of normal players when joining the world.
+    @EventHandler
+    public void onPlayerConnect(PlayerJoinEvent event){
+        Player player = event.getPlayer();
+        if(player.hasPermission("lavaescape.admin")) return;
+
+        player.getInventory().clear();
+    }
+
+    // Removes players that disconnect, if they disconnect when they died and before the match ends,
+    // they are only removed from the startingPlayers Set, if not they are removed from both the getPlayers Set and the startingPlayers Set.
+    // This also restores their inventory, i.e if they are normal players, it should effectively clear their inventory.
+    @EventHandler
+    public void onPlayerDisconnect(PlayerQuitEvent event){
+
+        Player player = event.getPlayer();
+        Bukkit.broadcastMessage(player.getName() + " left the server");
+
+        if(arenaManager.getArenas() == null) return;
+
+        List<String> arenas = arenaManager.getArenas();
+        Arena arena;
+        for(String arenaName : arenas){
+            arena = arenaManager.getArena(arenaName);
+
+            if(arena.getStartingPlayers().contains(player) || arena.getPlayers().contains(player)){
+                if(arena.getStartingPlayers().contains(player) && !arena.getPlayers().contains(player)){
+                    arena.removeStartingPlayer(player);
+                } else {
+                    arenaManager.restorePlayerInventory(player);
+                    arenaManager.removePlayerFromArena(arenaName, player);
+                    arena.removeStartingPlayer(player);
+                }
+
+            }
+        }
+
     }
 
     @EventHandler
@@ -673,10 +887,10 @@ public class GameEvents implements Listener {
                 arenaName = arenaMenu.getArenaNamePage(player);
                 gameManager.adminStart(player, arenaName);
                 break;
-            case "restart match":
+            case "stop match":
                 event.setCancelled(true);
                 arenaName = arenaMenu.getArenaNamePage(player);
-                gameManager.adminRestartGame(player, arenaName);
+                gameManager.adminStopGame(player, arenaName);
                 break;
             case "confirm arena placement":
                 event.setCancelled(true);

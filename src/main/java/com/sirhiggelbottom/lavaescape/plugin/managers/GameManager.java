@@ -23,39 +23,46 @@ import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.world.World;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitScheduler;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public class GameManager {
 
     private final ArenaManager arenaManager;
     private final ConfigManager configManager;
     private final WorldeditAPI worldeditAPI;
-
     private final LavaEscapePlugin plugin;
-
-
     public GameManager(ArenaManager arenaManager, ConfigManager configManager, WorldeditAPI worldeditAPI, LavaEscapePlugin plugin) {
         this.arenaManager = arenaManager;
         this.configManager = configManager;
         this.worldeditAPI = worldeditAPI;
         this.plugin = plugin;
     }
-
-    public void isArenaReady(String arenaName){
+    public boolean isArenaReady(Player player,String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
 
         ConfigurationSection arenaConfigurationSection = configManager.getArenaConfig();
 
-        if(worldeditAPI.doesArenaSchematicExist(arenaName) && worldeditAPI.doesLobbySchematicExist(arenaName) && arenaManager.areSpawnpointsSet(arenaName)){
-
+        if(!worldeditAPI.doesArenaSchematicExist(arenaName) && !worldeditAPI.doesLobbySchematicExist(arenaName) && !arenaManager.areSpawnpointsSet(arenaName)){
+            player.sendMessage("Arena, Lobby and spawnpoints haven't been set");
+            return false;
         }
 
+
+        return true;
     }
 
+    Map<UUID, Boolean> stopFilter = new HashMap<>();
 
     public void isGameReady(String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
@@ -68,14 +75,21 @@ public class GameManager {
         if(!arenaManager.getGameMode(arenaName).isBlank() || !arenaManager.getGameMode(arenaName).isEmpty()){
             if(arenaManager.getGameMode(arenaName).equalsIgnoreCase("server")){
                 if (arena.getPlayers().size() >= minPlayers){
+                    int countdownUntilStart = 1;
+                    new BukkitRunnable() {
+                        public void run() {
 
-                    arenaManager.randomArenaTeleport(arenaName,arenaManager.getSpawnPoints(arenaName));
-                    arenaManager.storeAndClearPlayersInventory(arenaName);
-                    arenaManager.giveStartingItems(arenaName);
-                    arenaManager.setSurvivalGamemode(arenaName);
-                    arena.setGameState(ArenaManager.GameState.STARTING);
-                    plugin.setShouldContinueFilling(true);
-                    lavaTask(arenaName);
+                            arenaManager.randomArenaTeleport(arenaName,arenaManager.getSpawnPoints(arenaName));
+                            arenaManager.storeAndClearPlayersInventory(arenaName);
+                            arenaManager.giveStartingItems(arenaName);
+                            arenaManager.setSurvivalGamemode(arenaName);
+                            arena.setGameState(ArenaManager.GameState.STARTING);
+                            plugin.setShouldContinueFilling(true);
+                            lavaTask(arenaName);
+
+                        }
+                    }.runTaskLater(JavaPlugin.getProvidingPlugin(getClass()), 20L * countdownUntilStart);
+
 
                 }else {
                     Bukkit.broadcastMessage("Waiting for more players to start game " + remainingPlayersForStart + " is needed before the game can start.");
@@ -88,7 +102,6 @@ public class GameManager {
         }
 
     }
-
     public void adminStart(Player player, String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
         arenaManager.healArenaPlayers(arenaName);
@@ -108,34 +121,50 @@ public class GameManager {
 
     }
 
-    public void adminRestartGame(Player admin, String arenaName){
-        Arena arena = arenaManager.getArena(arenaName);
+    public void adminStopGame(Player admin, String arenaName){
 
+        if(stopFilter.containsKey(admin.getUniqueId()) && stopFilter.get(admin.getUniqueId())){
+            stopFilter.remove(admin.getUniqueId());
+            return;
+        }
+
+        Arena arena = arenaManager.getArena(arenaName);
+        plugin.setShouldContinueFilling(false);
         arena.cancelLavaTask();
 
         for(Player player : arenaManager.getPlayersInArena(arenaName)){
 
             arenaManager.healPlayer(player);
-            arenaManager.restorePlayerInventory(player);
             arenaManager.teleportLobby(player, arenaName);
+            arenaManager.restorePlayerInventory(player);
 
         }
 
-        worldeditAPI.placeSchematic(admin, arenaName); // Resets the arena.
+        new BukkitRunnable() {
+            public void run() {
+                Bukkit.getLogger().info("Resetting arena");
+                worldeditAPI.placeSchematic(admin, arenaName);
 
-        arenaManager.checkOnlinePlayers(arenaName);  // Checks if any of the starting or active players has left the server, and removes them if so.
+            }
+        }.runTaskLater(JavaPlugin.getProvidingPlugin(getClass()), 100L);
 
-        adminStart(admin, arenaName);
+        arena.setGameState(ArenaManager.GameState.STANDBY);
+        Bukkit.broadcastMessage("Game stopped");
+        stopFilter.put(admin.getUniqueId(), true);
 
     }
-
     public void lavaTask(String arenaName){
         Arena arena = arenaManager.getArena(arenaName);
         String basePath = "arenas." + arena.getName() + ".timeValues";
 
         arena.setGameState(ArenaManager.GameState.GRACE);
+        String riseMessage = ChatColor.RED + "The lava is rising and PvP is turned on!";
+        String deathMatchMessage = ChatColor.YELLOW + "Lava is no longer rising, it's time for a Deathmatch!";
 
-        int Ymax = worldeditAPI.findArenaMaximumPointNonDebug(arenaName).getY();
+        // Deprecated
+        int Ymax = worldeditAPI.findArenaMaximumPointNonDebug(arenaName).getY() - 2; // Stops the lava 2 blocks below the maxY point.
+
+        /*int Ymax = worldeditAPI.findArenaMaximumPointNonDebug(arenaName).y();*/
 
         int gracePeriod = configManager.getArenaConfig().getInt(basePath + ".gracePeriod");
 
@@ -147,25 +176,36 @@ public class GameManager {
         int riseTime = configManager.getArenaConfig().getInt(basePath + ".lavadelay");
 
         BukkitScheduler scheduler = plugin.getServer().getScheduler();
+
         int taskId = scheduler.scheduleSyncRepeatingTask(plugin, new Runnable() {
+            // Deprecated
             int currentY = worldeditAPI.findArenaMinimumPointNonDebug(arenaName).getY();
+            /*int currentY = worldeditAPI.findArenaMinimumPointNonDebug(arenaName).y();*/
 
             @Override
             public void run() {
 
+                // Deprecated
                 if(currentY == worldeditAPI.findArenaMinimumPointNonDebug(arenaName).getY()){
-                    Bukkit.broadcastMessage("The lava is rising!");
+                    Bukkit.broadcastMessage(ChatColor.BOLD + riseMessage);
                 }
 
-                int maxY = Ymax;
+                /*if(currentY == worldeditAPI.findArenaMinimumPointNonDebug(arenaName).y()){
+                    Bukkit.broadcastMessage("The lava is rising!");
+                }*/
 
-                if(!plugin.shouldContinueFilling() || currentY >= maxY){
-                    Bukkit.broadcastMessage("Lava is no longer rising.");
+                if(!plugin.shouldContinueFilling()){
+
                     arena.setGameState(ArenaManager.GameState.WAITING);
                     scheduler.cancelTasks(plugin);
-                }
 
-                if(!arena.getGameState().equals(ArenaManager.GameState.LAVA)){
+                } else if (currentY >= Ymax) {
+
+                    Bukkit.broadcastMessage(ChatColor.BOLD + deathMatchMessage);
+                    arena.setGameState(ArenaManager.GameState.DEATHMATCH);
+                    scheduler.cancelTasks(plugin);
+
+                } else if(!arena.getGameState().equals(ArenaManager.GameState.LAVA)){
                     arena.setGameState(ArenaManager.GameState.LAVA);
                 }
 
@@ -173,14 +213,16 @@ public class GameManager {
                 currentY++;
             }
         }, 20L * gracePeriod,20L * riseTime);
+
         arena.setLavaTaskId(taskId);
     }
-
     public void fillLava(String arenaName, int y){
 
         Arena arena = arenaManager.getArena(arenaName);
         String basePath = "." + arena.getName();
         ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
+
+        if(arenaSection == null) return;
 
         String worldName = arenaSection.getString(basePath + ".worldName");
 
@@ -200,10 +242,16 @@ public class GameManager {
         BlockVector3 minPoint = worldeditAPI.findArenaMinimumPointNonDebug(arenaName);
         BlockVector3 maxPoint = worldeditAPI.findArenaMaximumPointNonDebug(arenaName);
 
+        // Deprecated
         int minX = minPoint.getX();
         int maxX = maxPoint.getX();
         int minZ = minPoint.getZ();
         int maxZ = maxPoint.getZ();
+
+        /*int minX = minPoint.x();
+        int maxX = maxPoint.x();
+        int minZ = minPoint.z();
+        int maxZ = maxPoint.z();*/
 
         org.bukkit.World buWorld = BukkitAdapter.adapt(world);
 

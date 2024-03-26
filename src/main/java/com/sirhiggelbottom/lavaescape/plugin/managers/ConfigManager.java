@@ -26,10 +26,12 @@ public class ConfigManager {
     }
     private void loadConfig() {
 
-        folder = new File(plugin.getDataFolder(), "LavaEscape");
+
+
+        /*folder = new File(plugin.getDataFolder(), "LavaEscape");
         if(!folder.exists()){
             folder.mkdirs();
-        }
+        }*/
 
 
         /*// Load or create the config.yml
@@ -38,6 +40,10 @@ public class ConfigManager {
             plugin.saveResource("config.yml", false);
         }
         config = YamlConfiguration.loadConfiguration(configFile);*/
+
+        if(!plugin.getDataFolder().exists()){
+            plugin.getDataFolder().mkdir();
+        }
 
         // Load or create the Arena.yml
         arenaFile = new File(plugin.getDataFolder(), "Arena.yml");

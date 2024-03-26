@@ -1,9 +1,12 @@
 package com.sirhiggelbottom.lavaescape.plugin.commands;
 
+import com.sirhiggelbottom.lavaescape.plugin.Arena.Arena;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaManager;
 import com.sirhiggelbottom.lavaescape.plugin.managers.ArenaMenu;
 import com.sirhiggelbottom.lavaescape.plugin.managers.GameManager;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -23,6 +26,8 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         this.arenaMenu = arenaMenu;
     }
 
+
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
@@ -34,19 +39,63 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
         Player player = (Player) sender;
         boolean isAdmin = player.hasPermission("lavaescape.admin");
 
-        if(args[0].equalsIgnoreCase("menu")){
+        /*if(args.length == 0){
+            sendUsageMessage(player);
+            return true;
+        } else if (args.length == 1 && !args[0].equalsIgnoreCase("menu")) {
+            sendUsageMessage(player);
+            return true;
+        }*/
+
+        if(args[0].equalsIgnoreCase("help")){
+            sendUsageMessage(player);
+            return true;
+        } else if(isAdmin && args[0].equalsIgnoreCase("menu")){
             handleMenuCommand(sender);
             return true;
         } else if(args[0].equalsIgnoreCase("join")){
             handleJoinCommand(sender, args[1]);
             return true;
+        } else if (args[0].equalsIgnoreCase("leave")) {
+            handleLeaveCommand(sender, args[1]);
+            return true;
         } else if(isAdmin && args.length == 2 && args[0].equalsIgnoreCase("leftover") && arenaManager.getArenas().contains(args[1])){
             handleLeftoverCommand(player, args[1]);
             return true;
+        } else if(isAdmin && args.length == 2 && args[0].equalsIgnoreCase("reloadP") && arenaManager.getArenas().contains(args[1])){
+            handleReloadPCommand(sender, args[1]);
+            return true;
+        } else {
+            sendUsageMessage(player);
+            return true;
         }
 
-        return false;
 
+    }
+
+    private void sendUsageMessage(Player player) {
+        boolean isAdmin = player.hasPermission("lavaescape.admin");
+
+        if (isAdmin) {
+            // Usage messages for admins
+            player.sendMessage(ChatColor.GOLD + ("LavaEscape Commands:"));
+            player.sendMessage(ChatColor.YELLOW + "/lava menu " + ChatColor.GRAY + "- Opens the admin menu.");
+            player.sendMessage(ChatColor.YELLOW + "/lava join <arena> " + ChatColor.GRAY + "- Join an arena.");
+            player.sendMessage(ChatColor.YELLOW + "/lava leave <arena> " + ChatColor.GRAY + "- Leave the arena.");
+            player.sendMessage(ChatColor.YELLOW + "/lava leftover <arena> " + ChatColor.GRAY + "- Lists players that aren't in a lobby.");
+            player.sendMessage(ChatColor.YELLOW + "/lava reloadP <arena> " + ChatColor.GRAY + "- Reloads player amount properties.");
+            player.sendMessage(ChatColor.YELLOW + "/lava help " + ChatColor.GRAY + "- Lists LavaEscape commands.");
+        } else {
+            // Usage messages for normal players
+            player.sendMessage(ChatColor.GOLD + ("LavaEscape Commands:"));
+            player.sendMessage(ChatColor.YELLOW + "/lava join <arena> " + ChatColor.GRAY + "- Join an arena.");
+            player.sendMessage(ChatColor.YELLOW + "/lava leave <arena> " + ChatColor.GRAY + "- Leave the arena.");
+            player.sendMessage(ChatColor.YELLOW + "/lava help " + ChatColor.GRAY + "- Lists LavaEscape commands.");
+        }
+    }
+
+    private void handleReloadPCommand(CommandSender sender, String arg) {
+        arenaManager.reloadPlayerLimit((Player) sender, arg);
     }
 
     private void handleLeftoverCommand(Player player, String arg) {
@@ -90,14 +139,49 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
 
     }
 
+    private void handleLeaveCommand(CommandSender sender, String arenaName) {
+        if(!isSenderPlayer(sender)) return;
+        if(arenaManager.getArena(arenaName) == null) return;
+
+        Arena arena = arenaManager.getArena(arenaName);
+        Player player = (Player) sender;
+
+        if(arenaManager.getPlayersInArena(arenaName).contains(player)){
+
+            if(arena.getGameState().toString().equals("STANDBY") || arena.getGameState().toString().equals("WAITING")){
+
+                arenaManager.removePlayerFromLobby(arena.getName(), player);
+
+            } else {
+
+                arenaManager.removePlayerFromArena(arena.getName(), player);
+                arenaManager.teleportLobby(player, arena.getName());
+                arenaManager.healPlayer(player);
+                arenaManager.restorePlayerInventory(player);
+                player.setGameMode(GameMode.ADVENTURE);
+
+            }
+
+        }
+
+    }
+
     private void handleJoinCommand(CommandSender sender, String arenaName) {
+        if(!isSenderPlayer(sender)) return;
 
         Player player = (Player) sender;
+
+        if(arenaManager.getPlayersInArena(arenaName).contains(player)){
+            player.sendMessage("You have already joined the lobby, the match will start soon.");
+            return;
+        }
 
         if(arenaManager.getGameStage(arenaName).equals("STANDBY") || arenaManager.getGameStage(arenaName).equals("WAITING")){
             arenaManager.addPlayerToArena(arenaName, player);
             arenaManager.teleportLobby(player, arenaName);
             gameManager.isGameReady(arenaName);
+        } else {
+            player.sendMessage("The game has already started, wait for the next one");
         }
 
     }
@@ -119,19 +203,30 @@ public class LavaCommandExecutor implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
 
-        List<String> commands = new ArrayList<>(Arrays.asList("join", "menu"));
+        List<String> commands = new ArrayList<>();
 
         if(sender.hasPermission("lavaescape.admin")){
+            commands.add("menu");
+            commands.add("join");
+            commands.add("leave");
             commands.add("leftover");
+            commands.add("reloadP");
+            commands.add("help");
+        } else {
+            commands.add("join");
+            commands.add("leave");
+            commands.add("help");
         }
 
         if(args.length == 1){
             return commands;
         }
 
-        if (args.length == 2 && args[0].equalsIgnoreCase("join")) {
+        if (args.length == 2 && (args[0].equalsIgnoreCase("join") || args[0].equalsIgnoreCase("leave")) ) {
             return arenaManager.getArenas();
         } else if(sender.hasPermission("lavaescape.admin") && args.length == 2 && args[0].equalsIgnoreCase("leftover")){
+            return arenaManager.getArenas();
+        } else if(sender.hasPermission("lavaescape.admin") && args.length == 2 && args[0].equalsIgnoreCase("reloadP")){
             return arenaManager.getArenas();
         }
         return Collections.emptyList();

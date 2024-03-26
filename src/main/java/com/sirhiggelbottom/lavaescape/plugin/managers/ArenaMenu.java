@@ -204,7 +204,7 @@ public class ArenaMenu {
         int joinSlot = 10;
         int configSlot = 12;
         int startSlot = 14;
-        int restartSlot = 15;
+        int stopSlot = 15;
         int resetArenaSlot = 16;
         int exitSlot = 18;
         boolean isAdmin = player.hasPermission("lavaescape.admin");
@@ -213,7 +213,7 @@ public class ArenaMenu {
         List<Integer> nonBoarderItems;
 
         if(isAdmin){
-            nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, joinSlot, configSlot, startSlot, restartSlot, resetArenaSlot, exitSlot));
+            nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, joinSlot, configSlot, startSlot, stopSlot, resetArenaSlot, exitSlot));
         } else {
             nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, joinSlot, exitSlot));
         }
@@ -223,7 +223,7 @@ public class ArenaMenu {
         if(isAdmin){
             inv.setItem(configSlot, itemManager.getConfigItem());
             inv.setItem(startSlot, itemManager.getStartItem(arenaName));
-            inv.setItem(restartSlot, itemManager.getRestartItem(arenaName));
+            inv.setItem(stopSlot, itemManager.getStopItem(arenaName));
             inv.setItem(resetArenaSlot, itemManager.getResetArenaItem());
         }
 
@@ -308,6 +308,7 @@ public class ArenaMenu {
                 int deleteArenaSlot = 31;
                 int minPlayersSlot = 33;
                 int maxPlayersSlot = 34;
+                int countdownUntilStartSlot = 37;
                 int starterItemsSlot = 39;
                 int lootchestsSlot = 40;
                 int blacklistedBlocksSlot = 41;
@@ -318,11 +319,14 @@ public class ArenaMenu {
                 result = Bukkit.createInventory(null, arenaPageSize, arenaName + " Config");
 
                 nonBoarderItems = new ArrayList<>(Arrays.asList(backSlot, setArenaSlot, setLobbySlot, generateSpawnsSlot, minYSlot, maxYSlot, normalSlot, compSlot,
-                        riseTimeSlot, graceTimeSlot, deleteArenaSlot, minPlayersSlot, maxPlayersSlot, starterItemsSlot, lootchestsSlot, blacklistedBlocksSlot, exitSlot));
+                        riseTimeSlot, graceTimeSlot, deleteArenaSlot, minPlayersSlot, maxPlayersSlot, countdownUntilStartSlot, starterItemsSlot, lootchestsSlot, blacklistedBlocksSlot, exitSlot));
 
-                if(!arenaManager.getConfigValue(arenaName, "arena.pos1.x.").isEmpty() &&
-                        !arenaManager.getConfigValue(arenaName, "arena.pos1.y.").isEmpty() &&
-                        !arenaManager.getConfigValue(arenaName, "arena.pos1.z.").isEmpty()){
+                if(!arenaManager.getConfigValue(arenaName, "arena.pos1.x.").equalsIgnoreCase("none") &&
+                        !arenaManager.getConfigValue(arenaName, "arena.pos1.y.").equalsIgnoreCase("none") &&
+                        !arenaManager.getConfigValue(arenaName, "arena.pos1.z.").equalsIgnoreCase("none") &&
+                        !arenaManager.getConfigValue(arenaName,"arena.pos2.x").equalsIgnoreCase("none") &&
+                        !arenaManager.getConfigValue(arenaName,"arena.pos2.y").equalsIgnoreCase("none") &&
+                        !arenaManager.getConfigValue(arenaName,"arena.pos2.z").equalsIgnoreCase("none")){
                     int updateSlot = 22;
                     nonBoarderItems.add(updateSlot);
                     result.setItem(updateSlot, itemManager.getUpdateArenaItem());

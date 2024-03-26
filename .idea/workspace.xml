@@ -6,8 +6,18 @@
   <component name="ChangeListManager">
     <list default="true" id="59663720-f0ed-437f-8eba-45ebb01e6bc8" name="Changes" comment="V0.0.1.2">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependency-reduced-pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/dependency-reduced-pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/API/WorldeditAPI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/API/WorldeditAPI.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/LavaEscapePlugin.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/LavaEscapePlugin.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/LavaCommandExecutor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/commands/LavaCommandExecutor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/events/GameEvents.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/events/GameEvents.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaMenu.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ArenaMenu.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ConfigManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ConfigManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/GameManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/GameManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ItemManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/sirhiggelbottom/lavaescape/plugin/managers/ItemManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/plugin.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/plugin.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,7 +50,7 @@
     <option name="stateVersion" value="1" />
   </component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="ProjectErrors" />
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
@@ -79,6 +89,9 @@
       <recent name="C:\Users\a\Documents\GitHub\LavaEscape\src\main\resources" />
       <recent name="C:\Users\a\Documents\GitHub\LavaEscape\target\classes\com\sirhiggelbottom\lavaescape\plugin" />
       <recent name="C:\Users\a\Documents\GitHub\LavaEscape\target\classes\resources" />
+    </key>
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="com.sirhiggelbottom.lavaescape.plugin.managers" />
     </key>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />

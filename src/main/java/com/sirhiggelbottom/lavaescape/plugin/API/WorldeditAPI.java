@@ -27,6 +27,8 @@ import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -303,6 +305,8 @@ public class WorldeditAPI {
         Clipboard clipboard;
 
         ClipboardFormat format = ClipboardFormats.findByFile(schematicFile);
+        if(format == null) return null;
+
         try (ClipboardReader reader = format.getReader(new FileInputStream(schematicFile))){
             clipboard = reader.read();
             }catch (Exception e){
@@ -331,6 +335,9 @@ public class WorldeditAPI {
         Clipboard clipboard;
 
         ClipboardFormat format = ClipboardFormats.findByFile(schematicFile);
+
+        if(format == null) return null;
+
         try (ClipboardReader reader = format.getReader(new FileInputStream(schematicFile))){
             clipboard = reader.read();
         }catch (Exception e){
@@ -344,8 +351,6 @@ public class WorldeditAPI {
     }
 
     public void placeSchematic(CommandSender sender, String arenaName) {
-        File schematicDir = new File(plugin.getDataFolder().getParentFile(), "LavaEscape/schematics/" + arenaName);
-        File schematicFile = new File(schematicDir, arenaName + ".schem");
         Clipboard clipboard = loadArenaSchematic(arenaName, sender);
         if (clipboard == null) {
             sender.sendMessage("Failed to load schematic.");
@@ -356,18 +361,24 @@ public class WorldeditAPI {
         World world = BukkitAdapter.adapt(player.getWorld());
         BlockVector3 point = findArenaMinimumPointNonDebug(arenaName);
 
-        try (EditSession editSession = WorldEdit.getInstance().newEditSession(world)) {
-            Operation operation = new ClipboardHolder(clipboard)
-                    .createPaste(editSession)
-                    .to(point)
-                    .ignoreAirBlocks(false)
-                    .build();
-            Operations.complete(operation);
-            //sender.sendMessage("Schematic: " + schematicFile + " successfully pasted at: " + point.getX() + " " + point.getY() + " " + point.getZ());
-        } catch (Exception e) {
-            sender.sendMessage("Error when pasting schematic: " + e.getMessage());
-            e.printStackTrace();
-        }
+        new BukkitRunnable() {
+            public void run() {
+                try (EditSession editSession = WorldEdit.getInstance().newEditSession(world)) {
+                    Operation operation = new ClipboardHolder(clipboard)
+                            .createPaste(editSession)
+                            .to(point)
+                            .ignoreAirBlocks(false)
+                            .build();
+                    Operations.complete(operation);
+                    //sender.sendMessage("Schematic: " + schematicFile + " successfully pasted at: " + point.getX() + " " + point.getY() + " " + point.getZ());
+                } catch (Exception e) {
+                    sender.sendMessage("Error when pasting schematic: " + e.getMessage());
+                    e.printStackTrace();
+                }
+                Bukkit.getLogger().info("Arena has been reset");
+            }
+        }.runTaskLater(JavaPlugin.getProvidingPlugin(getClass()), 100L);
+
     }
 
     private BlockVector3 findArenaMinimumPoint(CommandSender sender,String arenaName){
@@ -376,6 +387,8 @@ public class WorldeditAPI {
         World world = BukkitAdapter.adapt(player.getWorld());
         String basePath = "." + arena.getName();
         ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
+
+        if(arenaSection == null) return null;
 
         int pos1X = arenaSection.getInt(basePath + ".arena.pos1.x");
         int pos1Y = arenaSection.getInt(basePath + ".arena.pos1.y");
@@ -451,6 +464,8 @@ public class WorldeditAPI {
         Arena arena = arenaManager.getArena(arenaName);
         String basePath = "." + arena.getName();
         ConfigurationSection arenaSection = configManager.getArenaConfig().getConfigurationSection("arenas");
+
+        if(arenaSection == null) return null;
 
         String worldName = arenaSection.getString(basePath + ".worldName");
 

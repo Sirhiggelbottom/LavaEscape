@@ -319,7 +319,7 @@ public class ItemManager {
 
                     String input = stateSnapshot.getText();
 
-                    if(!input.isBlank() && correctItemMaterialName(input)){
+                    if(!input.isBlank() && correctItemMaterialName(input) && correctRarity(input)){
 
                         closeAnvilGuiPage(stateSnapshot.getPlayer());
                         writtenLootItemsValue.put(playerId, input);
@@ -349,7 +349,7 @@ public class ItemManager {
 
                     String input = stateSnapshot.getText();
 
-                    if(!input.isBlank() && correctBlockMaterialName(input) && correctRarity(input)){
+                    if(!input.isBlank() && correctBlockMaterialName(input)){
 
                         closeAnvilGuiPage(stateSnapshot.getPlayer());
                         writtenBlacklistetBlocksValue.put(playerId, input);
@@ -1321,16 +1321,16 @@ public class ItemManager {
         return startItem;
     }
 
-    public ItemStack getRestartItem(String arenaName){
-        ItemStack restartItem = new ItemStack(Material.STICKY_PISTON);
-        ItemMeta meta = restartItem.getItemMeta();
+    public ItemStack getStopItem(String arenaName){
+        ItemStack stopItem = new ItemStack(Material.STICKY_PISTON);
+        ItemMeta meta = stopItem.getItemMeta();
         if(meta == null) return null;
 
-        meta.setDisplayName(ChatColor.GREEN + "Restart match");
-        meta.setLore(List.of(ChatColor.GRAY + "Restarts the match."));
-        restartItem.setItemMeta(meta);
+        meta.setDisplayName(ChatColor.GREEN + "Stop match");
+        meta.setLore(List.of(ChatColor.GRAY + "Stops the match."));
+        stopItem.setItemMeta(meta);
 
-        return restartItem;
+        return stopItem;
     }
 
     public ItemStack getLootchestItem(){

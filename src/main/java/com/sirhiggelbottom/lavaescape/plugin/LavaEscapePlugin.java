@@ -26,7 +26,7 @@ public class LavaEscapePlugin extends JavaPlugin {
         configManager = new ConfigManager(this);
 
         // Initialize ArenaManager
-        arenaManager = new ArenaManager(this, configManager, arena);
+        arenaManager = new ArenaManager(this, configManager);
 
         worldeditAPI = new WorldeditAPI(this, arenaManager, configManager);
 
